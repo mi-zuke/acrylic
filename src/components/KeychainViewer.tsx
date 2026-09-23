@@ -36,10 +36,7 @@ const ENV_PRESET_LIGHTS: Record<EnvironmentPreset, {
   studio: { ambientColor: 0xffffff, dirColor: 0xffffff, dirIntensity: 1.3 },
   bridge: { ambientColor: 0xf1f5f9, dirColor: 0xf8fafc, dirIntensity: 1.4 },
   sunset: { ambientColor: 0xfb923c, dirColor: 0xfb923c, dirIntensity: 1.5 },
-  night: { ambientColor: 0x93c5fd, dirColor: 0x93c5fd, dirIntensity: 0.8 },
   outdoor: { ambientColor: 0xfffbeb, dirColor: 0xfffbeb, dirIntensity: 1.5 },
-  city: { ambientColor: 0xf8fafc, dirColor: 0xf8fafc, dirIntensity: 1.4 },
-  lebombo: { ambientColor: 0xfefce8, dirColor: 0xfffbeb, dirIntensity: 1.45 },
 };
 
 export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
@@ -440,16 +437,13 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       // 3. 環境に応じたディレクショナルライトの調整
       scene.children.forEach(c => {
         if (c instanceof THREE.DirectionalLight) {
-          if (envPreset === 'night') {
-            c.color.setHex(0x93c5fd);
-            c.intensity = 0.8;
-          } else if (envPreset === 'sunset') {
+          if (envPreset === 'sunset') {
             c.color.setHex(0xfb923c);
             c.intensity = 1.4;
-          } else if (envPreset === 'outdoor' || envPreset === 'lebombo') {
+          } else if (envPreset === 'outdoor') {
             c.color.setHex(0xfffbeb);
             c.intensity = 1.5;
-          } else if (envPreset === 'bridge' || envPreset === 'city') {
+          } else if (envPreset === 'bridge') {
             c.color.setHex(0xf8fafc);
             c.intensity = 1.4;
           } else {
@@ -499,7 +493,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       const blendedColor = neutralColor.clone().lerp(targetColor, influenceRatio);
       ambientLightRef.current.color.copy(blendedColor);
 
-      const targetIntensity = envPreset === 'night' ? 0.75 : 0.95;
+      const targetIntensity = 0.95;
       ambientLightRef.current.intensity = 0.9 + (targetIntensity - 0.9) * influenceRatio;
     }
 

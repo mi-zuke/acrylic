@@ -3,12 +3,9 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 export type EnvironmentPreset =
   | 'studio'
-  | 'lebombo'
   | 'outdoor'
   | 'sunset'
-  | 'bridge'
-  | 'city'
-  | 'night';
+  | 'bridge';
 
 export interface EnvironmentPresetItem {
   id: EnvironmentPreset;
@@ -36,14 +33,6 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     hdrFile: '/environments/quarry_01_2k.hdr',
   },
   {
-    id: 'lebombo',
-    name: '山岳・丘陵（レボンボ）',
-    category: '屋外',
-    icon: '⛰️',
-    description: '晴天の澄んだ光と広大な山並みの風景',
-    hdrFile: '/environments/lebombo_2k.hdr',
-  },
-  {
     id: 'sunset',
     name: '黄金の夕景',
     category: '夕景',
@@ -58,22 +47,6 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     icon: '🏛️',
     description: 'ヨーロッパの歴史ある美しい運河と石畳の街並み',
     hdrFile: '/environments/san_giuseppe_bridge_2k.hdr',
-  },
-  {
-    id: 'city',
-    name: '都会の街歩き',
-    category: '街並み',
-    icon: '🏙️',
-    description: '歩道橋から見渡すモダンな都市空間',
-    hdrFile: '/environments/pedestrian_overpass_2k.hdr',
-  },
-  {
-    id: 'night',
-    name: '満天の星空',
-    category: '夜景',
-    icon: '🌌',
-    description: '静寂の夜空に瞬く無数の星々のきらめき',
-    hdrFile: '/environments/moonless_golf_2k.hdr',
   },
 ];
 
