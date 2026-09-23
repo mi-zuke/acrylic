@@ -336,9 +336,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </div>
             )}
           </div>
+        </section>
 
-          <div className="space-y-3.5 pt-1">
-            <div className="flex items-center justify-between">
+        <hr className="border-t-2 border-gray-300 -mx-6" />
+
+        {/* 4. 操作・保存 */}
+        <section className="space-y-3.5">
+          <div className="flex items-center justify-between">
               <button
                 onClick={() => setAutoRotate((prev) => !prev)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-none border border-gray-300 bg-[#e8e8e8] hover:bg-[#dedede] text-gray-800 font-medium text-xs transition-colors cursor-pointer"
@@ -366,7 +370,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <Camera className="w-4 h-4 text-gray-700" />
               <span>画像を保存</span>
             </button>
-          </div>
         </section>
 
         {/* ===== 将来の再調整用に保持しているライティング調整デバッグパネル ===== */}
