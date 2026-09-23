@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Camera,
   RotateCw,
@@ -83,6 +83,33 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showDebugLighting, setShowDebugLighting] = useState(true);
 
+  // スクロールコンテナ監視（下にスクロール可能な余地があるか判定）
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollDown, setCanScrollDown] = useState<boolean>(false);
+
+  const checkScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const hasMore = el.scrollHeight - el.scrollTop - el.clientHeight > 12;
+    setCanScrollDown(hasMore);
+  };
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    checkScroll();
+
+    const resizeObserver = new ResizeObserver(() => {
+      checkScroll();
+    });
+    resizeObserver.observe(el);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // スライダーの左側を白よりのグレーで塗るトラック背景グラデーション
   const getSliderTrackStyle = (val: number, min: number, max: number) => {
     const percent = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
@@ -119,8 +146,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   };
 
   return (
-    <div className="w-full bg-white flex flex-col h-full overflow-y-auto text-gray-800">
-      <div className="p-6 space-y-6 text-sm text-gray-700">
+    <div className="relative w-full h-full overflow-hidden flex flex-col">
+      <div
+        ref={scrollContainerRef}
+        onScroll={checkScroll}
+        className="w-full bg-white flex flex-col h-full overflow-y-auto text-gray-800"
+      >
+        <div className="p-6 space-y-6 text-sm text-gray-700">
         {/* 1. 画像アップロード & サンプル */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
@@ -539,6 +571,20 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           )}
         </section>
         */}
+        </div>
+      </div>
+
+      {/* 下端のグラデーションフェード（下にスクロール可能な項目がある場合に表示） */}
+      <div
+        className={`
+          pointer-events-none absolute bottom-0 left-0 right-0 h-12
+          bg-gradient-to-t from-white via-white/80 to-transparent
+          flex items-end justify-center pb-1.5
+          transition-opacity duration-300 ease-out z-10
+          ${canScrollDown ? 'opacity-100' : 'opacity-0'}
+        `}
+      >
+        <ChevronDown className="w-4 h-4 text-gray-400" />
       </div>
     </div>
   );
