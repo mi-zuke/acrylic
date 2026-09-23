@@ -263,6 +263,11 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       const targetW = canvas.width * 2;
       const targetH = canvas.height * 2;
 
+      // スクショ撮影時は一時的にオフセット（25%上昇等）を解除し、通常の中央位置にする
+      camera.clearViewOffset();
+      camera.aspect = origWidth / origHeight;
+      camera.updateProjectionMatrix();
+
       // 高精細レンダリング用に一時的にサイズを変更 (updateStyle=falseでレイアウト崩れを防止)
       renderer.setPixelRatio(1);
       renderer.setSize(targetW, targetH, false);
@@ -271,10 +276,13 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       // 高精細 PNG データの取得
       const dataUrl = renderer.domElement.toDataURL('image/png');
 
-      // 元のサイズとピクセル比に戻して再描画
+      // 元のサイズとピクセル比に戻す
       renderer.setPixelRatio(origPixelRatio);
       renderer.setSize(origWidth, origHeight, false);
-      renderer.render(scene, camera);
+
+      // カメラのオフセット状態を復元して再描画
+      updateCameraViewOffset();
+      renderScene();
 
       return dataUrl;
     },
