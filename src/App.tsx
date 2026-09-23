@@ -143,7 +143,7 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowHelpModal(true)}
-          className="absolute top-4 left-4 z-20 h-8 px-2.5 flex items-center gap-1.5 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-gray-800 text-xs font-medium shadow-sm rounded-none cursor-pointer transition-colors"
+          className="absolute top-4 left-4 z-20 h-8 px-2.5 flex items-center gap-1.5 bg-white hover:bg-gray-50 active:bg-gray-100 border border-gray-300 text-gray-800 text-xs font-medium shadow-sm rounded-none cursor-pointer transition-colors"
           title="使い方"
           aria-label="使い方を表示"
         >
