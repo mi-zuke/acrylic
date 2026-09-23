@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Info, X } from 'lucide-react';
 import { KeychainViewer, ViewerHandle } from './components/KeychainViewer';
 import { ControlPanel } from './components/ControlPanel';
 import {
@@ -49,6 +49,7 @@ export const App: React.FC = () => {
   const [illustrationEnvInfluence, setIllustrationEnvInfluence] = useState<number>(30); // イラストへの環境光の影響度(%)
   const [lightingParams, setLightingParams] = useState<LightingDebugParams>(DEFAULT_LIGHTING_PARAMS);
   const [showControlPoints, setShowControlPoints] = useState<boolean>(false); // デバッグ用：アクリル外枠の制御点表示
+  const [showHelpModal, setShowHelpModal] = useState<boolean>(false); // 使い方モーダルの表示フラグ
 
   // モバイル時の操作パネル開閉フラグ (初期値: true = 下部半分開いている状態)
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState<boolean>(true);
@@ -138,6 +139,17 @@ export const App: React.FC = () => {
     <div className="relative flex flex-col lg:flex-row w-screen h-screen overflow-hidden bg-white font-sans text-gray-800">
       {/* メイン3Dプレビュー領域（モバイル時は全画面、PC時は右側フレックス領域） */}
       <main className="w-full h-full lg:flex-1 relative overflow-hidden bg-gray-100">
+        {/* 背景左上の使い方ボタン */}
+        <button
+          type="button"
+          onClick={() => setShowHelpModal(true)}
+          className="absolute top-4 left-4 z-20 w-8 h-8 flex items-center justify-center bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-gray-800 shadow-sm rounded-none cursor-pointer transition-colors"
+          title="使い方"
+          aria-label="使い方を表示"
+        >
+          <Info className="w-4 h-4" />
+        </button>
+
         {imageSrc && (
           <KeychainViewer
             ref={viewerRef}
@@ -220,6 +232,89 @@ export const App: React.FC = () => {
           />
         </div>
       </aside>
+
+      {/* 使い方モーダル */}
+      {showHelpModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] p-4"
+          onClick={() => setShowHelpModal(false)}
+        >
+          <div
+            className="bg-white border border-gray-300 shadow-xl max-w-sm w-full p-5 rounded-none text-gray-800 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
+              <div className="flex items-center gap-2 font-bold text-gray-800 text-sm">
+                <Info className="w-4 h-4 text-blue-600" />
+                <span>操作方法・使い方</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(false)}
+                className="w-7 h-7 flex items-center justify-center bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-gray-700 rounded-none cursor-pointer transition-colors"
+                aria-label="閉じる"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* ガイド一覧 */}
+            <div className="space-y-3.5 text-xs leading-relaxed text-gray-600">
+              <div>
+                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  キーホルダーの回転
+                </p>
+                <p className="pl-3.5">
+                  画面中央付近（円の内側）をドラッグまたはスワイプすると、キーホルダー本体が左右に自転します。
+                </p>
+              </div>
+
+              <div>
+                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  背景・視点の回転
+                </p>
+                <p className="pl-3.5">
+                  画面の外側（円の外）をドラッグまたはスワイプすると、周囲の背景や上下の視点角度が回転します。
+                </p>
+              </div>
+
+              <div>
+                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  拡大・縮小（ズーム）
+                </p>
+                <p className="pl-3.5">
+                  マウスホイール（PC）または2本指ピンチ操作（スマホ）でズームイン・ズームアウトができます。
+                </p>
+              </div>
+
+              <div>
+                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  画像の保存・向きリセット
+                </p>
+                <p className="pl-3.5">
+                  設定パネルの「向きをリセット」で初期位置に復帰、「画像を保存」で現在の3D表示をPNG画像として保存できます。
+                </p>
+              </div>
+            </div>
+
+            {/* フッター閉じるボタン */}
+            <div className="mt-5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(false)}
+                className="w-full py-2 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-xs font-medium text-gray-800 rounded-none cursor-pointer transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
