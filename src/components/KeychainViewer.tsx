@@ -186,9 +186,35 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
   // 外部からの関数呼び出し（スクショ撮影・カメラリセット）
   useImperativeHandle(ref, () => ({
     captureScreenshot: () => {
-      if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return '';
-      rendererRef.current.render(sceneRef.current, cameraRef.current);
-      return rendererRef.current.domElement.toDataURL('image/png');
+      if (!rendererRef.current || !sceneRef.current || !cameraRef.current || !canvasRef.current) return '';
+      const renderer = rendererRef.current;
+      const scene = sceneRef.current;
+      const camera = cameraRef.current;
+      const canvas = canvasRef.current;
+
+      // 現在の表示サイズとピクセル比を記録
+      const origWidth = canvas.clientWidth;
+      const origHeight = canvas.clientHeight;
+      const origPixelRatio = renderer.getPixelRatio();
+
+      // 現在の描画バッファ解像度の縦横2倍サイズを算出
+      const targetW = canvas.width * 2;
+      const targetH = canvas.height * 2;
+
+      // 高精細レンダリング用に一時的にサイズを変更 (updateStyle=falseでレイアウト崩れを防止)
+      renderer.setPixelRatio(1);
+      renderer.setSize(targetW, targetH, false);
+      renderer.render(scene, camera);
+
+      // 高精細 PNG データの取得
+      const dataUrl = renderer.domElement.toDataURL('image/png');
+
+      // 元のサイズとピクセル比に戻して再描画
+      renderer.setPixelRatio(origPixelRatio);
+      renderer.setSize(origWidth, origHeight, false);
+      renderer.render(scene, camera);
+
+      return dataUrl;
     },
     resetCamera: () => {
       // 仰角、アクキー自転、背景回転をすべてリセット
