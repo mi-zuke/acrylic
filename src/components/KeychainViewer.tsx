@@ -187,11 +187,25 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     return { x: sx, y: sy, radius };
   };
 
+  // 端末に応じたカメラ設定（スマホ時はアクキーデフォルトサイズ2/3, 背景拡大率1/2）
+  const getCameraProfile = () => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    if (isMobile) {
+      // 背景拡大率1/2: 垂直視野角tanを2倍に拡張 (FOV 38° -> 約69.1°)
+      const baseFovRad = (38 * Math.PI) / 180;
+      const mobileFov = 2 * Math.atan(2 * Math.tan(baseFovRad / 2)) * (180 / Math.PI);
+      // アクキーサイズ2/3: 見かけの大きさが2/3倍となるカメラ距離 Z = 14 * 0.75 = 10.5
+      return { fov: mobileFov, distance: 10.5, isMobile: true };
+    }
+    return { fov: 38, distance: 14, isMobile: false };
+  };
+
   // ズーム（カメラ距離）の適用関数（factor > 1 で縮小・遠ざかる, factor < 1 で拡大・近づく）
   const applyZoom = (factor: number) => {
     if (!cameraRef.current) return;
     const camera = cameraRef.current;
-    const minZ = 4.5;
+    const profile = getCameraProfile();
+    const minZ = profile.isMobile ? 3.0 : 4.5;
     const maxZ = 28.0;
     const newZ = Math.max(minZ, Math.min(maxZ, camera.position.z * factor));
     camera.position.z = newZ;
@@ -249,7 +263,10 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       applyRotations();
 
       if (controlsRef.current && cameraRef.current) {
-        cameraRef.current.position.set(0, 0, 14);
+        const profile = getCameraProfile();
+        cameraRef.current.fov = profile.fov;
+        cameraRef.current.position.set(0, 0, profile.distance);
+        cameraRef.current.updateProjectionMatrix();
         controlsRef.current.target.set(0, 0, 0);
         controlsRef.current.update();
       }
@@ -273,8 +290,9 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
-    camera.position.set(0, 0, 14);
+    const profile = getCameraProfile();
+    const camera = new THREE.PerspectiveCamera(profile.fov, width / height, 0.1, 100);
+    camera.position.set(0, 0, profile.distance);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({
@@ -364,6 +382,8 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       if (!canvasRef.current || !renderer || !camera) return;
       const w = canvasRef.current.clientWidth;
       const h = canvasRef.current.clientHeight;
+      const profile = getCameraProfile();
+      camera.fov = profile.fov;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h, false);
