@@ -25,20 +25,20 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     description: 'ニュートラルで清潔なソフトボックス照明（標準）',
   },
   {
-    id: 'outdoor',
-    name: '青空・自然',
-    category: '屋外',
-    icon: '🌳',
-    description: '晴天の太陽光と大自然の澄み切った光',
-    hdrFile: '/environments/quarry_01_2k.hdr',
-  },
-  {
     id: 'sunset',
     name: '黄金の夕景',
     category: '夕景',
     icon: '🌇',
     description: 'ヴェネツィアの運河に沈むドラマチックな夕日',
     hdrFile: '/environments/venice_sunset_2k.hdr',
+  },
+  {
+    id: 'outdoor',
+    name: '青空・自然',
+    category: '屋外',
+    icon: '🌳',
+    description: '晴天の太陽光と大自然の澄み切った光',
+    hdrFile: '/environments/quarry_01_2k.hdr',
   },
   {
     id: 'bridge',
