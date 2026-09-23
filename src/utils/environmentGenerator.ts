@@ -28,20 +28,20 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     description: 'ニュートラルで清潔なソフトボックス照明（標準）',
   },
   {
-    id: 'lebombo',
-    name: '山岳・丘陵（レボンボ）',
-    category: '屋外',
-    icon: '⛰️',
-    description: '晴天の澄んだ光と広大な山並みの風景',
-    hdrFile: '/environments/lebombo_2k.hdr',
-  },
-  {
     id: 'outdoor',
     name: '青空・自然',
     category: '屋外',
     icon: '🌳',
     description: '晴天の太陽光と大自然の澄み切った光',
     hdrFile: '/environments/quarry_01_2k.hdr',
+  },
+  {
+    id: 'lebombo',
+    name: '山岳・丘陵（レボンボ）',
+    category: '屋外',
+    icon: '⛰️',
+    description: '晴天の澄んだ光と広大な山並みの風景',
+    hdrFile: '/environments/lebombo_2k.hdr',
   },
   {
     id: 'sunset',

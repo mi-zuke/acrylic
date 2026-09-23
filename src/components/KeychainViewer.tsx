@@ -53,8 +53,8 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
   autoRotate,
   lightPreset,
   backgroundColor = '#bababa',
-  envPreset = 'studio',
-  showSkyboxBg = false,
+  envPreset = 'outdoor',
+  showSkyboxBg = true,
   illustrationEnvInfluence = 30,
   lightingParams = DEFAULT_LIGHTING_PARAMS,
 }, ref) => {

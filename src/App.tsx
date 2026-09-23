@@ -44,8 +44,8 @@ export const App: React.FC = () => {
   // ビューワー・環境設定
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
   const [backgroundColor, setBackgroundColor] = useState<string>('#cccccc'); // 既定値: #CCCCCC
-  const [envPreset, setEnvPreset] = useState<EnvironmentPreset>('studio'); // 天球環境
-  const [showSkyboxBg, setShowSkyboxBg] = useState<boolean>(false);
+  const [envPreset, setEnvPreset] = useState<EnvironmentPreset>('outdoor'); // 天球環境（デフォルト: サンプル1）
+  const [showSkyboxBg, setShowSkyboxBg] = useState<boolean>(true); // パノラマ表示（デフォルト: ON）
   const [illustrationEnvInfluence, setIllustrationEnvInfluence] = useState<number>(30); // イラストへの環境光の影響度(%)
   const [lightingParams, setLightingParams] = useState<LightingDebugParams>(DEFAULT_LIGHTING_PARAMS);
 
