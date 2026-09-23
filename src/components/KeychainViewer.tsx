@@ -96,6 +96,10 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
   const dragModeRef = useRef<'keychain' | 'background' | null>(null);
   const lastPointerPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // マルチタッチ（2本指ピンチズーム）用のポインター座標追跡
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const prevPinchDistRef = useRef<number | null>(null);
+
   // 画像読み込み初期（正面時）に一度だけ算出・保持する不変の重心3D座標と基準半径
   const initialCenter3DRef = useRef<THREE.Vector3 | null>(null);
   const initialWorldRadiusRef = useRef<number>(4.0);
@@ -181,6 +185,27 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     const radius = Math.max(140, basePixelRadius * 1.25) * 0.625;
 
     return { x: sx, y: sy, radius };
+  };
+
+  // ズーム（カメラ距離）の適用関数（factor > 1 で縮小・遠ざかる, factor < 1 で拡大・近づく）
+  const applyZoom = (factor: number) => {
+    if (!cameraRef.current) return;
+    const camera = cameraRef.current;
+    const minZ = 4.5;
+    const maxZ = 28.0;
+    const newZ = Math.max(minZ, Math.min(maxZ, camera.position.z * factor));
+    camera.position.z = newZ;
+    camera.updateProjectionMatrix();
+
+    if (controlsRef.current) {
+      controlsRef.current.update();
+    }
+    renderScene();
+
+    const m = getCircleMetrics();
+    if (m) {
+      setCircleInfo(prev => prev ? { ...prev, x: m.x, y: m.y, radius: m.radius } : null);
+    }
   };
 
   // 外部からの関数呼び出し（スクショ撮影・カメラリセット）
@@ -801,33 +826,50 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
 
   }, [cutPath, imageSrc, acrylicThickness, acrylicColor, hardwareType, hardwareColor, whiteBacking]);
 
-  // ポインター操作（マウスドラッグ・ホバー判定）
+  // ポインター操作（マウスドラッグ・マルチタッチピンチ・ホバー判定）
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
 
-    const metrics = getCircleMetrics();
-    let mode: 'keychain' | 'background' = 'background';
-    if (metrics) {
-      const dist = Math.hypot(px - metrics.x, py - metrics.y);
-      if (dist <= metrics.radius) {
-        mode = 'keychain';
-      }
+    // ポインターを登録
+    activePointersRef.current.set(e.pointerId, { x: px, y: py });
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {}
+
+    // 2本指タッチ時はピンチズームモードへ移行
+    if (activePointersRef.current.size === 2) {
+      const points = Array.from(activePointersRef.current.values());
+      prevPinchDistRef.current = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      isDraggingRef.current = false;
+      dragModeRef.current = null;
+      return;
     }
 
-    isDraggingRef.current = true;
-    dragModeRef.current = mode;
-    lastPointerPosRef.current = { x: px, y: py };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // 1本指の場合：アクキー自転または背景回転の判定
+    if (activePointersRef.current.size === 1) {
+      const metrics = getCircleMetrics();
+      let mode: 'keychain' | 'background' = 'background';
+      if (metrics) {
+        const dist = Math.hypot(px - metrics.x, py - metrics.y);
+        if (dist <= metrics.radius) {
+          mode = 'keychain';
+        }
+      }
 
-    setCircleInfo(prev => prev ? {
-      ...prev,
-      isHovered: mode === 'keychain',
-      isDragging: true,
-      dragMode: mode,
-    } : null);
+      isDraggingRef.current = true;
+      dragModeRef.current = mode;
+      lastPointerPosRef.current = { x: px, y: py };
+
+      setCircleInfo(prev => prev ? {
+        ...prev,
+        isHovered: mode === 'keychain',
+        isDragging: true,
+        dragMode: mode,
+      } : null);
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -836,10 +878,48 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
 
+    // 非アクティブポインター（マウスのホバー移動等）
+    if (!activePointersRef.current.has(e.pointerId)) {
+      const metrics = getCircleMetrics();
+      if (metrics) {
+        const dist = Math.hypot(px - metrics.x, py - metrics.y);
+        setCircleInfo({
+          x: metrics.x,
+          y: metrics.y,
+          radius: metrics.radius,
+          isHovered: dist <= metrics.radius,
+          isDragging: false,
+          dragMode: null,
+        });
+      }
+      return;
+    }
+
+    // ポインター位置を更新
+    activePointersRef.current.set(e.pointerId, { x: px, y: py });
+
+    // 2本指ピンチズーム処理
+    if (activePointersRef.current.size === 2) {
+      const points = Array.from(activePointersRef.current.values());
+      const currentDist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+
+      if (prevPinchDistRef.current && prevPinchDistRef.current > 0) {
+        const ratio = currentDist / prevPinchDistRef.current;
+        if (ratio > 0.1 && ratio < 10) {
+          // ピンチアウト(ratio > 1)でzoomFactor < 1(カメラ接近・拡大)
+          const zoomFactor = 1 / ratio;
+          applyZoom(zoomFactor);
+        }
+      }
+      prevPinchDistRef.current = currentDist;
+      return;
+    }
+
+    // 1本指ドラッグ処理
     const metrics = getCircleMetrics();
     if (!metrics) return;
 
-    if (isDraggingRef.current) {
+    if (isDraggingRef.current && activePointersRef.current.size === 1) {
       const dx = px - lastPointerPosRef.current.x;
       const dy = py - lastPointerPosRef.current.y;
 
@@ -864,28 +944,30 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
         isDragging: true,
         dragMode: dragModeRef.current,
       });
-    } else {
-      // 非ドラッグ時: ホバー距離判定
-      const dist = Math.hypot(px - metrics.x, py - metrics.y);
-      const isHovered = dist <= metrics.radius;
-
-      setCircleInfo({
-        x: metrics.x,
-        y: metrics.y,
-        radius: metrics.radius,
-        isHovered,
-        isDragging: false,
-        dragMode: null,
-      });
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    isDraggingRef.current = false;
-    dragModeRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (_) {}
+
+    activePointersRef.current.delete(e.pointerId);
+
+    if (activePointersRef.current.size < 2) {
+      prevPinchDistRef.current = null;
+    }
+
+    if (activePointersRef.current.size === 1) {
+      // ピンチから1本指に戻った時は急激な視点飛びを防ぐためlastPointerPosを現在指に再設定
+      const remaining = Array.from(activePointersRef.current.values())[0];
+      lastPointerPosRef.current = { x: remaining.x, y: remaining.y };
+      isDraggingRef.current = false;
+      dragModeRef.current = null;
+    } else if (activePointersRef.current.size === 0) {
+      isDraggingRef.current = false;
+      dragModeRef.current = null;
+    }
 
     const metrics = getCircleMetrics();
     if (metrics && canvasRef.current) {
@@ -905,9 +987,16 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
   };
 
   const handlePointerLeave = () => {
-    if (!isDraggingRef.current) {
+    if (!isDraggingRef.current && activePointersRef.current.size === 0) {
       setCircleInfo(prev => prev ? { ...prev, isHovered: false } : null);
     }
+  };
+
+  // PCマウスホイール操作によるズーム
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY > 0 ? 1.06 : 0.94;
+    applyZoom(zoomFactor);
   };
 
   return (
@@ -919,6 +1008,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onPointerLeave={handlePointerLeave}
+      onWheel={handleWheel}
     >
       {/* 重心ホバー円オーバーレイ（アクキー操作エリア：半透明グレー/半透明黒） */}
       {circleInfo && (
