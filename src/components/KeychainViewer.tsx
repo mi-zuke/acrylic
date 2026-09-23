@@ -39,7 +39,6 @@ const ENV_PRESET_LIGHTS: Record<EnvironmentPreset, {
   night: { ambientColor: 0x93c5fd, dirColor: 0x93c5fd, dirIntensity: 0.8 },
   outdoor: { ambientColor: 0xfffbeb, dirColor: 0xfffbeb, dirIntensity: 1.5 },
   city: { ambientColor: 0xf8fafc, dirColor: 0xf8fafc, dirIntensity: 1.4 },
-  industrial_sunset: { ambientColor: 0xfdba74, dirColor: 0xfb923c, dirIntensity: 1.5 },
   lebombo: { ambientColor: 0xfefce8, dirColor: 0xfffbeb, dirIntensity: 1.45 },
 };
 
@@ -444,9 +443,6 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
           if (envPreset === 'night') {
             c.color.setHex(0x93c5fd);
             c.intensity = 0.8;
-          } else if (envPreset === 'industrial_sunset') {
-            c.color.setHex(0xfb923c);
-            c.intensity = 1.5;
           } else if (envPreset === 'sunset') {
             c.color.setHex(0xfb923c);
             c.intensity = 1.4;

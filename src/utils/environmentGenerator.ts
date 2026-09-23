@@ -6,7 +6,6 @@ export type EnvironmentPreset =
   | 'lebombo'
   | 'outdoor'
   | 'sunset'
-  | 'industrial_sunset'
   | 'bridge'
   | 'city'
   | 'night';
@@ -51,14 +50,6 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     icon: '🌇',
     description: 'ヴェネツィアの運河に沈むドラマチックな夕日',
     hdrFile: '/environments/venice_sunset_2k.hdr',
-  },
-  {
-    id: 'industrial_sunset',
-    name: '夕暮れの空',
-    category: '夕景',
-    icon: '🌇',
-    description: '工場地帯から見上げる鮮やかな夕焼け空',
-    hdrFile: '/environments/industrial_sunset_puresky_2k.hdr',
   },
   {
     id: 'bridge',
