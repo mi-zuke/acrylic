@@ -48,7 +48,7 @@ export const App: React.FC = () => {
   const [showSkyboxBg, setShowSkyboxBg] = useState<boolean>(true); // パノラマ表示（デフォルト: ON）
   const [illustrationEnvInfluence, setIllustrationEnvInfluence] = useState<number>(30); // イラストへの環境光の影響度(%)
   const [lightingParams, setLightingParams] = useState<LightingDebugParams>(DEFAULT_LIGHTING_PARAMS);
-  const [showControlPoints, setShowControlPoints] = useState<boolean>(true); // デバッグ用：アクリル外枠の制御点表示
+  const [showControlPoints, setShowControlPoints] = useState<boolean>(false); // デバッグ用：アクリル外枠の制御点表示
 
   // モバイル時の操作パネル開閉フラグ (初期値: true = 下部半分開いている状態)
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState<boolean>(true);
