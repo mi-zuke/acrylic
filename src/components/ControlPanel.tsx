@@ -47,6 +47,10 @@ interface ControlPanelProps {
   // アクション
   onCaptureScreenshot: () => void;
   onResetCamera: () => void;
+
+  // デバッグ
+  showControlPoints?: boolean;
+  setShowControlPoints?: (v: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -73,6 +77,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onResetLighting,
   onCaptureScreenshot,
   onResetCamera,
+  showControlPoints = true,
+  setShowControlPoints,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showDebugLighting, setShowDebugLighting] = useState(true);
@@ -169,6 +175,21 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <Sliders className="w-4 h-4 text-gray-700" />
               キーホルダー
             </span>
+
+            {/* 制御点を表示チェックボックス (デバッグ用) */}
+            {setShowControlPoints && (
+              <label className="flex items-center gap-1.5 cursor-pointer text-[12px] text-gray-600 hover:text-gray-900 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showControlPoints}
+                  onChange={(e) => setShowControlPoints(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded-none border-gray-400 text-gray-800 focus:ring-0 cursor-pointer"
+                />
+                <span className={showControlPoints ? 'text-gray-900 font-medium' : 'text-gray-600'}>
+                  制御点
+                </span>
+              </label>
+            )}
           </div>
 
           {/* 最小余白スライダー */}

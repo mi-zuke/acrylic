@@ -48,6 +48,7 @@ export const App: React.FC = () => {
   const [showSkyboxBg, setShowSkyboxBg] = useState<boolean>(true); // パノラマ表示（デフォルト: ON）
   const [illustrationEnvInfluence, setIllustrationEnvInfluence] = useState<number>(30); // イラストへの環境光の影響度(%)
   const [lightingParams, setLightingParams] = useState<LightingDebugParams>(DEFAULT_LIGHTING_PARAMS);
+  const [showControlPoints, setShowControlPoints] = useState<boolean>(true); // デバッグ用：アクリル外枠の制御点表示
 
   // モバイル時の操作パネル開閉フラグ (初期値: true = 下部半分開いている状態)
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState<boolean>(true);
@@ -153,6 +154,7 @@ export const App: React.FC = () => {
             showSkyboxBg={showSkyboxBg}
             illustrationEnvInfluence={illustrationEnvInfluence}
             lightingParams={lightingParams}
+            showControlPoints={showControlPoints}
           />
         )}
       </main>
@@ -171,7 +173,7 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={toggleMobilePanel}
-          className="lg:hidden flex items-center justify-between px-4 h-11 shrink-0 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] text-gray-800 text-[15px] font-medium border-b border-gray-300 rounded-none cursor-pointer transition-colors select-none"
+          className="lg:hidden flex items-center justify-between px-4 h-11 shrink-0 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] text-gray-800 text-[13px] font-medium border-b border-gray-300 rounded-none cursor-pointer transition-colors select-none"
         >
           <div className="flex items-center gap-2">
             <span className="w-6 h-1 bg-gray-500 rounded-full" />
@@ -212,6 +214,8 @@ export const App: React.FC = () => {
             onResetLighting={handleResetLighting}
             onCaptureScreenshot={handleCaptureScreenshot}
             onResetCamera={handleResetCamera}
+            showControlPoints={showControlPoints}
+            setShowControlPoints={setShowControlPoints}
           />
         </div>
       </aside>

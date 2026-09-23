@@ -20,6 +20,7 @@ export interface ViewerProps {
   showSkyboxBg?: boolean;   // 天球を背景に表示するかどうか (デフォルト: false)
   illustrationEnvInfluence?: number; // イラストへの環境光の影響度 (0〜100, デフォルト: 30)
   lightingParams?: LightingDebugParams; // デバッグ用ライティング・マテリアル調整値
+  showControlPoints?: boolean; // デバッグ用：アクリル外枠の制御点・ハンドル表示
 }
 
 export interface ViewerHandle {
@@ -54,6 +55,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
   showSkyboxBg = true,
   illustrationEnvInfluence = 30,
   lightingParams = DEFAULT_LIGHTING_PARAMS,
+  showControlPoints = true,
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -811,6 +813,73 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       hardwareGroupRef.current = hwGroup;
     }
 
+    // 4.4 デバッグ用：アクリル外枠の制御点・ハンドルの可視化
+    if (showControlPoints && cutPath.bezierSegments && cutPath.bezierSegments.length > 0) {
+      const debugGroup = new THREE.Group();
+      debugGroup.renderOrder = 999;
+
+      const zPos = worldThickness / 2 + 0.05; // アクリル前面より少し手前
+
+      const anchorGeo = new THREE.SphereGeometry(0.045, 12, 12);
+      const anchorMat = new THREE.MeshBasicMaterial({ color: 0xff2222, depthTest: false }); // 赤: アンカーポイント
+
+      const cpGeo = new THREE.SphereGeometry(0.028, 10, 10);
+      const cpMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, depthTest: false }); // シアン: ベジェ制御点
+
+      const linePositions: number[] = [];
+      const curvePositions: number[] = [];
+
+      cutPath.bezierSegments.forEach((seg) => {
+        // アンカーポイント (p0)
+        const p0Mesh = new THREE.Mesh(anchorGeo, anchorMat);
+        p0Mesh.position.set(seg.p0.x, seg.p0.y, zPos);
+        debugGroup.add(p0Mesh);
+
+        // 制御点 1 (cp1)
+        const cp1Mesh = new THREE.Mesh(cpGeo, cpMat);
+        cp1Mesh.position.set(seg.cp1.x, seg.cp1.y, zPos);
+        debugGroup.add(cp1Mesh);
+
+        // 制御点 2 (cp2)
+        const cp2Mesh = new THREE.Mesh(cpGeo, cpMat);
+        cp2Mesh.position.set(seg.cp2.x, seg.cp2.y, zPos);
+        debugGroup.add(cp2Mesh);
+
+        // ハンドル線 (p0 -> cp1, p1 -> cp2)
+        linePositions.push(seg.p0.x, seg.p0.y, zPos, seg.cp1.x, seg.cp1.y, zPos);
+        linePositions.push(seg.p1.x, seg.p1.y, zPos, seg.cp2.x, seg.cp2.y, zPos);
+
+        // ベジェ曲線自体のサンプリング線 (輪郭ガイド)
+        for (let t = 0; t <= 10; t++) {
+          const ratio = t / 10;
+          const u = 1 - ratio;
+          const bx = u * u * u * seg.p0.x + 3 * u * u * ratio * seg.cp1.x + 3 * u * ratio * ratio * seg.cp2.x + ratio * ratio * ratio * seg.p1.x;
+          const by = u * u * u * seg.p0.y + 3 * u * u * ratio * seg.cp1.y + 3 * u * ratio * ratio * seg.cp2.y + ratio * ratio * ratio * seg.p1.y;
+          curvePositions.push(bx, by, zPos);
+        }
+      });
+
+      // ハンドル線
+      if (linePositions.length > 0) {
+        const lineGeo = new THREE.BufferGeometry();
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xffea00, depthTest: false, transparent: true, opacity: 0.85 });
+        const handleLines = new THREE.LineSegments(lineGeo, lineMat);
+        debugGroup.add(handleLines);
+      }
+
+      // ベジェ輪郭線
+      if (curvePositions.length > 0) {
+        const curveGeo = new THREE.BufferGeometry();
+        curveGeo.setAttribute('position', new THREE.Float32BufferAttribute(curvePositions, 3));
+        const curveMat = new THREE.LineBasicMaterial({ color: 0x22c55e, depthTest: false });
+        const curveLine = new THREE.Line(curveGeo, curveMat);
+        debugGroup.add(curveLine);
+      }
+
+      keychainContent.add(debugGroup);
+    }
+
     // シーンにアクキーグループを追加
     scene.add(keychainGroup);
     (window as any).__THREE_DEBUG__.keychainGroup = keychainGroup;
@@ -831,7 +900,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       });
     }
 
-  }, [cutPath, imageSrc, acrylicThickness, acrylicColor, hardwareType, hardwareColor, whiteBacking]);
+  }, [cutPath, imageSrc, acrylicThickness, acrylicColor, hardwareType, hardwareColor, whiteBacking, showControlPoints]);
 
   // ポインター操作（マウスドラッグ・マルチタッチピンチ・ホバー判定）
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
