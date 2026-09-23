@@ -162,19 +162,19 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
         <hr className="border-gray-200" />
 
-        {/* 2. カットパス・余白の調整 */}
+        {/* 2. アクキー設定 */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-gray-900 flex items-center gap-1.5">
               <Sliders className="w-4 h-4 text-gray-700" />
-              カットパス・余白設定
+              アクキーのプロパティ
             </span>
           </div>
 
           {/* 最小余白スライダー */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-[13px]">
-              <span className="text-gray-600">最小余白 (Offset)</span>
+              <span className="text-gray-600">余白の大きさ</span>
               <span className="text-gray-800 font-semibold">{options.offsetMargin} px</span>
             </div>
             <input
@@ -230,28 +230,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
         <hr className="border-gray-200" />
 
-        {/* 4. 3Dビュー・環境天球 ＆ 背景色 */}
+        {/* 4. 3Dビュー・背景と環境光 ＆ 背景色 */}
         <section className="space-y-3.5">
-          {/* 天球・環境プリセット */}
+          {/* 背景と環境光プリセット */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-gray-900 flex items-center gap-1.5">
                 <Globe className="w-4 h-4 text-gray-700" />
-                環境天球（ライティング反射）
+                背景と環境光
               </span>
-              
-              {/* 天球パノラマ背景の表示切替トグル */}
-              <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-gray-900 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={showSkyboxBg}
-                  onChange={(e) => setShowSkyboxBg(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded-none border-gray-400 text-gray-800 focus:ring-0 cursor-pointer"
-                />
-                <span className="text-gray-900 font-medium">
-                  パノラマ表示
-                </span>
-              </label>
             </div>
 
             {/* 天球プルダウン選択（背景は白） */}
@@ -277,13 +264,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </div>
             </div>
 
-            {/* 明るさスライダー（内部的にはMetalnessを 100(最明: metalness 0.00) -> 0(暗/金属反射: metalness 1.00) に逆転・引き伸ばしマッピング） */}
+            {/* 光の強さスライダー（内部的にはMetalnessを 100(最明: metalness 0.00) -> 0(暗/金属反射: metalness 1.00) に逆転・引き伸ばしマッピング） */}
             {(() => {
               const brightness = Math.round((1.0 - lightingParams.illustrationMetalness) * 100);
               return (
                 <div className="space-y-1.5 pt-1">
                   <div className="flex justify-between text-[13px]">
-                    <span className="text-gray-600">明るさ</span>
+                    <span className="text-gray-600">光の強さ</span>
                     <span className="text-gray-800 font-semibold">{brightness}</span>
                   </div>
                   <input
@@ -303,58 +290,51 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 </div>
               );
             })()}
-
-            {/* （温存用コメントアウト：旧・環境光の影響スライダー）
-            <div className="space-y-1.5 pt-1">
-              <div className="flex justify-between text-[13px]">
-                <span className="text-gray-600">環境光の影響</span>
-                <span className="text-gray-800 font-semibold">{illustrationEnvInfluence}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={illustrationEnvInfluence}
-                onChange={(e) => setIllustrationEnvInfluence(Number(e.target.value))}
-                className="custom-slider"
-                style={getSliderTrackStyle(illustrationEnvInfluence, 0, 100)}
-              />
-            </div>
-            */}
           </div>
 
-          {/* ステージ背景色（天球背景がOFFの時に有効） */}
-          <div className={`space-y-2 transition-opacity ${showSkyboxBg ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+          {/* 背景色（天球背景がOFFの時に有効） ＆ パノラマ表示 */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-gray-900 flex items-center gap-1.5">
                 <Palette className="w-4 h-4 text-gray-700" />
-                ステージ背景色
+                背景色
               </span>
-              {showSkyboxBg && (
-                <span className="text-[12px] text-gray-600 font-medium">※天球パノラマ背景を表示中</span>
-              )}
+
+              {/* 天球パノラマ背景の表示切替トグル */}
+              <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-gray-900 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showSkyboxBg}
+                  onChange={(e) => setShowSkyboxBg(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded-none border-gray-400 text-gray-800 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-gray-900 font-medium">
+                  パノラマ表示
+                </span>
+              </label>
             </div>
 
             {/* 6段階の白→黒グラデーションカラーパレット */}
-            <div className="grid grid-cols-6 gap-1.5 py-1">
-              {['#ffffff', '#cccccc', '#999999', '#666666', '#333333', '#000000'].map((color) => {
-                const isSelected = backgroundColor.toLowerCase() === color.toLowerCase() && !showSkyboxBg;
-                return (
-                  <button
-                    key={color}
-                    onClick={() => setBackgroundColor(color)}
-                    disabled={showSkyboxBg}
-                    title={color.toUpperCase()}
-                    className={`h-7 w-full rounded-none border transition-all cursor-pointer relative ${
-                      isSelected
-                        ? 'border-gray-300 scale-[1.14] z-10 shadow-sm'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                );
-              })}
+            <div className={`transition-opacity ${showSkyboxBg ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+              <div className="grid grid-cols-6 gap-1.5 py-1">
+                {['#ffffff', '#cccccc', '#999999', '#666666', '#333333', '#000000'].map((color) => {
+                  const isSelected = backgroundColor.toLowerCase() === color.toLowerCase() && !showSkyboxBg;
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setBackgroundColor(color)}
+                      disabled={showSkyboxBg}
+                      title={color.toUpperCase()}
+                      className={`h-7 w-full rounded-none border transition-all cursor-pointer relative ${
+                        isSelected
+                          ? 'border-gray-300 scale-[1.14] z-10 shadow-sm'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </div>
 
