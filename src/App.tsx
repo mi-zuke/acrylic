@@ -175,7 +175,7 @@ export const App: React.FC = () => {
         >
           <div className="flex items-center gap-2">
             <span className="w-6 h-1 bg-gray-500 rounded-full" />
-            <span>操作パネル {isMobilePanelOpen ? '（タップで閉じる）' : '（タップで開く）'}</span>
+            <span>設定</span>
           </div>
           <div className="flex items-center text-gray-600">
             {isMobilePanelOpen ? (
