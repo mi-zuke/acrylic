@@ -584,7 +584,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           ${canScrollDown ? 'opacity-100' : 'opacity-0'}
         `}
       >
-        <ChevronDown className="w-4 h-4 text-gray-400" />
+        <ChevronDown className="w-5 h-5 text-gray-400" />
       </div>
     </div>
   );
