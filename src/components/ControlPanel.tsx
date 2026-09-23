@@ -124,7 +124,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </span>
 
             {/* サンプルを使用チェックボックス */}
-            <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-gray-600 hover:text-gray-900 transition-colors">
+            <label className="flex items-center gap-1.5 cursor-pointer text-[15px] text-gray-600 hover:text-gray-900 transition-colors">
               <input
                 type="checkbox"
                 checked={useSample}
@@ -154,7 +154,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             >
               画像を選択
             </button>
-            <span className="text-[13px] text-gray-500 truncate">
+            <span className="text-[15px] text-gray-500 truncate">
               {useSample ? 'サンプル' : 'カスタム画像'}
             </span>
           </div>
@@ -173,7 +173,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
           {/* 最小余白スライダー */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[13px]">
+            <div className="flex justify-between text-[15px]">
               <span className="text-gray-600">余白の大きさ</span>
               <span className="text-gray-800 font-semibold">{options.offsetMargin} px</span>
             </div>
@@ -191,7 +191,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
           {/* アクリルの厚みスライダー */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[13px]">
+            <div className="flex justify-between text-[15px]">
               <span className="text-gray-600">アクリルの厚み</span>
               <span className="text-gray-800 font-semibold">{acrylicThickness} mm</span>
             </div>
@@ -209,7 +209,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
           {/* 穴のX位置オフセット */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[13px]">
+            <div className="flex justify-between text-[15px]">
               <span className="text-gray-600">ストラップ穴の横位置</span>
               <span className="text-gray-800 font-semibold">
                 {options.holeOffsetX > 0 ? `+${options.holeOffsetX}%` : `${options.holeOffsetX}%`}
@@ -269,7 +269,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               const brightness = Math.round((1.0 - lightingParams.illustrationMetalness) * 100);
               return (
                 <div className="space-y-1.5 pt-1">
-                  <div className="flex justify-between text-[13px]">
+                  <div className="flex justify-between text-[15px]">
                     <span className="text-gray-600">光の強さ</span>
                     <span className="text-gray-800 font-semibold">{brightness}</span>
                   </div>
@@ -301,7 +301,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </span>
 
               {/* 天球パノラマ背景の表示切替トグル */}
-              <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-gray-900 transition-colors">
+              <label className="flex items-center gap-1.5 cursor-pointer text-[15px] text-gray-900 transition-colors">
                 <input
                   type="checkbox"
                   checked={showSkyboxBg}
