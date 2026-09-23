@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { KeychainViewer, ViewerHandle } from './components/KeychainViewer';
 import { ControlPanel } from './components/ControlPanel';
 import {
@@ -47,6 +48,16 @@ export const App: React.FC = () => {
   const [showSkyboxBg, setShowSkyboxBg] = useState<boolean>(false);
   const [illustrationEnvInfluence, setIllustrationEnvInfluence] = useState<number>(30); // イラストへの環境光の影響度(%)
   const [lightingParams, setLightingParams] = useState<LightingDebugParams>(DEFAULT_LIGHTING_PARAMS);
+
+  // モバイル時の操作パネル開閉フラグ (初期値: true = 下部半分開いている状態)
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState<boolean>(true);
+
+  const toggleMobilePanel = () => {
+    setIsMobilePanelOpen((prev) => !prev);
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 320);
+  };
 
   // ライティング初期化ハンドラ
   const handleResetLighting = () => {
@@ -123,38 +134,9 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row w-screen h-screen overflow-hidden bg-white font-sans text-gray-800">
-      {/* 左側サイドバー（コントロールパネル） */}
-      <aside className="w-full lg:w-[420px] h-[45vh] lg:h-full shrink-0 border-r border-gray-200 shadow-sm z-20 bg-white flex flex-col">
-        <ControlPanel
-          options={cutOptions}
-          onOptionsChange={handleOptionsChange}
-          onImageUpload={handleImageUpload}
-          useSample={useSample}
-          onUseSampleChange={handleUseSampleChange}
-          cutPath={cutPath}
-          acrylicThickness={acrylicThickness}
-          setAcrylicThickness={setAcrylicThickness}
-          autoRotate={autoRotate}
-          setAutoRotate={setAutoRotate}
-          backgroundColor={backgroundColor}
-          setBackgroundColor={setBackgroundColor}
-          envPreset={envPreset}
-          setEnvPreset={setEnvPreset}
-          showSkyboxBg={showSkyboxBg}
-          setShowSkyboxBg={setShowSkyboxBg}
-          illustrationEnvInfluence={illustrationEnvInfluence}
-          setIllustrationEnvInfluence={setIllustrationEnvInfluence}
-          lightingParams={lightingParams}
-          onLightingParamsChange={setLightingParams}
-          onResetLighting={handleResetLighting}
-          onCaptureScreenshot={handleCaptureScreenshot}
-          onResetCamera={handleResetCamera}
-        />
-      </aside>
-
-      {/* メイン3Dプレビュー領域（右側） */}
-      <main className="flex-1 relative w-full h-[55vh] lg:h-full overflow-hidden bg-gray-100">
+    <div className="relative flex flex-col lg:flex-row w-screen h-screen overflow-hidden bg-white font-sans text-gray-800">
+      {/* メイン3Dプレビュー領域（モバイル時は全画面、PC時は右側フレックス領域） */}
+      <main className="w-full h-full lg:flex-1 relative overflow-hidden bg-gray-100">
         {imageSrc && (
           <KeychainViewer
             ref={viewerRef}
@@ -174,6 +156,65 @@ export const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* 操作パネル（PC: 左側固定サイドバー / スマホ: 画面下部半分固定・開閉ボトムシート） */}
+      <aside
+        className={`
+          bg-white shadow-xl lg:shadow-sm border-gray-200 z-30 flex flex-col
+          transition-all duration-300 ease-in-out
+          lg:order-first lg:relative lg:w-[420px] lg:h-full lg:border-r lg:border-t-0 lg:shadow-none
+          fixed bottom-0 left-0 right-0 border-t
+          ${isMobilePanelOpen ? 'h-[50vh]' : 'h-11'}
+        `}
+      >
+        {/* モバイル専用：開閉ヘッダーバー */}
+        <button
+          type="button"
+          onClick={toggleMobilePanel}
+          className="lg:hidden flex items-center justify-between px-4 h-11 shrink-0 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] text-gray-800 text-[13px] font-medium border-b border-gray-300 rounded-none cursor-pointer transition-colors select-none"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-1 bg-gray-500 rounded-full" />
+            <span>操作パネル {isMobilePanelOpen ? '（タップで閉じる）' : '（タップで開く）'}</span>
+          </div>
+          <div className="flex items-center text-gray-600">
+            {isMobilePanelOpen ? (
+              <ChevronDown className="w-4 h-4 text-gray-700" />
+            ) : (
+              <ChevronUp className="w-4 h-4 text-gray-700" />
+            )}
+          </div>
+        </button>
+
+        {/* コントロールパネル本体 */}
+        <div className={`flex-1 overflow-hidden flex flex-col ${!isMobilePanelOpen ? 'hidden lg:flex' : 'flex'}`}>
+          <ControlPanel
+            options={cutOptions}
+            onOptionsChange={handleOptionsChange}
+            onImageUpload={handleImageUpload}
+            useSample={useSample}
+            onUseSampleChange={handleUseSampleChange}
+            cutPath={cutPath}
+            acrylicThickness={acrylicThickness}
+            setAcrylicThickness={setAcrylicThickness}
+            autoRotate={autoRotate}
+            setAutoRotate={setAutoRotate}
+            backgroundColor={backgroundColor}
+            setBackgroundColor={setBackgroundColor}
+            envPreset={envPreset}
+            setEnvPreset={setEnvPreset}
+            showSkyboxBg={showSkyboxBg}
+            setShowSkyboxBg={setShowSkyboxBg}
+            illustrationEnvInfluence={illustrationEnvInfluence}
+            setIllustrationEnvInfluence={setIllustrationEnvInfluence}
+            lightingParams={lightingParams}
+            onLightingParamsChange={setLightingParams}
+            onResetLighting={handleResetLighting}
+            onCaptureScreenshot={handleCaptureScreenshot}
+            onResetCamera={handleResetCamera}
+          />
+        </div>
+      </aside>
     </div>
   );
 };
