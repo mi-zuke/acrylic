@@ -171,7 +171,7 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={toggleMobilePanel}
-          className="lg:hidden flex items-center justify-between px-4 h-11 shrink-0 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] text-gray-800 text-[13px] font-medium border-b border-gray-300 rounded-none cursor-pointer transition-colors select-none"
+          className="lg:hidden flex items-center justify-between px-4 h-11 shrink-0 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] text-gray-800 text-[15px] font-medium border-b border-gray-300 rounded-none cursor-pointer transition-colors select-none"
         >
           <div className="flex items-center gap-2">
             <span className="w-6 h-1 bg-gray-500 rounded-full" />
