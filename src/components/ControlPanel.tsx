@@ -167,7 +167,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="flex items-center justify-between">
             <span className="font-semibold text-gray-900 flex items-center gap-1.5">
               <Sliders className="w-4 h-4 text-gray-700" />
-              アクキーのプロパティ
+              キーホルダー
             </span>
           </div>
 
@@ -338,7 +338,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2 pt-1">
+          <div className="space-y-3.5 pt-1">
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setAutoRotate((prev) => !prev)}
