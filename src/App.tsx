@@ -143,11 +143,12 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowHelpModal(true)}
-          className="absolute top-4 left-4 z-20 w-8 h-8 flex items-center justify-center bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-gray-800 shadow-sm rounded-none cursor-pointer transition-colors"
+          className="absolute top-4 left-4 z-20 h-8 px-2.5 flex items-center gap-1.5 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-gray-800 text-xs font-medium shadow-sm rounded-none cursor-pointer transition-colors"
           title="使い方"
           aria-label="使い方を表示"
         >
-          <Info className="w-4 h-4" />
+          <Info className="w-3.5 h-3.5 text-gray-700" />
+          <span>使い方</span>
         </button>
 
         {imageSrc && (
@@ -246,7 +247,7 @@ export const App: React.FC = () => {
             {/* ヘッダー */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
               <div className="flex items-center gap-2 font-bold text-gray-800 text-sm">
-                <Info className="w-4 h-4 text-blue-600" />
+                <Info className="w-4 h-4 text-gray-700" />
                 <span>操作方法・使い方</span>
               </div>
               <button
@@ -263,7 +264,7 @@ export const App: React.FC = () => {
             <div className="space-y-3.5 text-xs leading-relaxed text-gray-600">
               <div>
                 <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
                   キーホルダーの回転
                 </p>
                 <p className="pl-3.5">
@@ -273,7 +274,7 @@ export const App: React.FC = () => {
 
               <div>
                 <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
                   背景・視点の回転
                 </p>
                 <p className="pl-3.5">
@@ -283,7 +284,7 @@ export const App: React.FC = () => {
 
               <div>
                 <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
                   拡大・縮小（ズーム）
                 </p>
                 <p className="pl-3.5">
@@ -293,7 +294,7 @@ export const App: React.FC = () => {
 
               <div>
                 <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
                   画像の保存・向きリセット
                 </p>
                 <p className="pl-3.5">
