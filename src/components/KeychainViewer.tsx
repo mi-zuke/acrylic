@@ -110,6 +110,13 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     autoRotateRef.current = autoRotate;
   }, [autoRotate]);
 
+  // パネル開閉フラグのRef管理（handleResize等のクロージャでも常に最新値を参照できるようにする）
+  const isMobilePanelOpenRef = useRef(isMobilePanelOpen);
+  isMobilePanelOpenRef.current = isMobilePanelOpen;
+  useEffect(() => {
+    isMobilePanelOpenRef.current = isMobilePanelOpen;
+  }, [isMobilePanelOpen]);
+
   // ホバー円の情報 (重心投影座標, 半径, 表示フラグ)
   const [circleInfo, setCircleInfo] = useState<{
     x: number;
@@ -207,7 +214,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     const w = canvasRef.current.clientWidth;
     const h = canvasRef.current.clientHeight;
 
-    if (isMobile && isMobilePanelOpen) {
+    if (isMobile && isMobilePanelOpenRef.current) {
       // 画面25%上に表示（カメラ視点を下方向に25%オフセットし、被写体を画面上部50vhの中央へシフト）
       cameraRef.current.setViewOffset(w, h, 0, Math.round(h * 0.25), w, h);
     } else {
