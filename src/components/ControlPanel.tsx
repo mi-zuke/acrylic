@@ -120,11 +120,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="flex items-center justify-between">
             <span className="font-semibold text-gray-900 flex items-center gap-1.5">
               <Upload className="w-4 h-4 text-gray-700" />
-              透過PNG画像の読み込み
+              画像読み込み
             </span>
 
             {/* サンプルを使用チェックボックス */}
-            <label className="flex items-center gap-1.5 cursor-pointer text-[15px] text-gray-600 hover:text-gray-900 transition-colors">
+            <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-gray-600 hover:text-gray-900 transition-colors">
               <input
                 type="checkbox"
                 checked={useSample}
@@ -154,13 +154,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             >
               画像を選択
             </button>
-            <span className="text-[15px] text-gray-500 truncate">
+            <span className="text-[13px] text-gray-500 truncate">
               {useSample ? 'サンプル' : 'カスタム画像'}
             </span>
           </div>
         </section>
 
-        <hr className="border-gray-200" />
+        <hr className="border-t-2 border-gray-300" />
 
         {/* 2. アクキー設定 */}
         <section className="space-y-3">
@@ -173,7 +173,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
           {/* 最小余白スライダー */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[15px]">
+            <div className="flex justify-between text-[13px]">
               <span className="text-gray-600">余白の大きさ</span>
               <span className="text-gray-800 font-semibold">{options.offsetMargin} px</span>
             </div>
@@ -191,7 +191,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
           {/* アクリルの厚みスライダー */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[15px]">
+            <div className="flex justify-between text-[13px]">
               <span className="text-gray-600">アクリルの厚み</span>
               <span className="text-gray-800 font-semibold">{acrylicThickness} mm</span>
             </div>
@@ -209,7 +209,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
           {/* 穴のX位置オフセット */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[15px]">
+            <div className="flex justify-between text-[13px]">
               <span className="text-gray-600">ストラップ穴の横位置</span>
               <span className="text-gray-800 font-semibold">
                 {options.holeOffsetX > 0 ? `+${options.holeOffsetX}%` : `${options.holeOffsetX}%`}
@@ -228,7 +228,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </div>
         </section>
 
-        <hr className="border-gray-200" />
+        <hr className="border-t-2 border-gray-300" />
 
         {/* 4. 3Dビュー・背景と環境光 ＆ 背景色 */}
         <section className="space-y-3.5">
@@ -269,7 +269,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               const brightness = Math.round((1.0 - lightingParams.illustrationMetalness) * 100);
               return (
                 <div className="space-y-1.5 pt-1">
-                  <div className="flex justify-between text-[15px]">
+                  <div className="flex justify-between text-[13px]">
                     <span className="text-gray-600">光の強さ</span>
                     <span className="text-gray-800 font-semibold">{brightness}</span>
                   </div>
@@ -292,16 +292,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             })()}
           </div>
 
-          {/* 背景色（天球背景がOFFの時に有効） ＆ パノラマ表示 */}
+          {/* 背景（天球背景がOFFの時に単色背景を表示） ＆ パノラマ表示 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-gray-900 flex items-center gap-1.5">
                 <Palette className="w-4 h-4 text-gray-700" />
-                背景色
+                背景
               </span>
 
               {/* 天球パノラマ背景の表示切替トグル */}
-              <label className="flex items-center gap-1.5 cursor-pointer text-[15px] text-gray-900 transition-colors">
+              <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-gray-900 transition-colors">
                 <input
                   type="checkbox"
                   checked={showSkyboxBg}
@@ -314,16 +314,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </label>
             </div>
 
-            {/* 6段階の白→黒グラデーションカラーパレット */}
-            <div className={`transition-opacity ${showSkyboxBg ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+            {/* 6段階の白→黒グラデーションカラーパレット（パノラマ表示がOFFの時のみ表示） */}
+            {!showSkyboxBg && (
               <div className="grid grid-cols-6 gap-1.5 py-1">
                 {['#ffffff', '#cccccc', '#999999', '#666666', '#333333', '#000000'].map((color) => {
-                  const isSelected = backgroundColor.toLowerCase() === color.toLowerCase() && !showSkyboxBg;
+                  const isSelected = backgroundColor.toLowerCase() === color.toLowerCase();
                   return (
                     <button
                       key={color}
                       onClick={() => setBackgroundColor(color)}
-                      disabled={showSkyboxBg}
                       title={color.toUpperCase()}
                       className={`h-7 w-full rounded-none border transition-all cursor-pointer relative ${
                         isSelected
@@ -335,7 +334,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   );
                 })}
               </div>
-            </div>
+            )}
           </div>
 
           <div className="space-y-3.5 pt-1">
