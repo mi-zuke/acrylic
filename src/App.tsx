@@ -265,10 +265,20 @@ export const App: React.FC = () => {
               <div>
                 <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
                   <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
+                  画像の読み込み
+                </p>
+                <p className="pl-3.5">
+                  背景が透過されたPNG画像（透過PNG）を読み込むと、イラストの輪郭に合わせて綺麗にアクリルが作成されます。
+                </p>
+              </div>
+
+              <div>
+                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
                   キーホルダーの回転
                 </p>
                 <p className="pl-3.5">
-                  画面中央付近（円の内側）をドラッグまたはスワイプすると、キーホルダー本体が左右に自転します。
+                  画面中央付近（円の内側）をドラッグすると、キーホルダー本体が左右に自転します。
                 </p>
               </div>
 
@@ -278,7 +288,7 @@ export const App: React.FC = () => {
                   背景・視点の回転
                 </p>
                 <p className="pl-3.5">
-                  画面の外側（円の外）をドラッグまたはスワイプすると、周囲の背景や上下の視点角度が回転します。
+                  画面の外側（円の外）をドラッグすると、周囲の背景や上下の視点角度が回転します。
                 </p>
               </div>
 
@@ -295,10 +305,10 @@ export const App: React.FC = () => {
               <div>
                 <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
                   <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
-                  画像の保存・向きリセット
+                  画像の保存
                 </p>
                 <p className="pl-3.5">
-                  設定パネルの「向きをリセット」で初期位置に復帰、「画像を保存」で現在の3D表示をPNG画像として保存できます。
+                  設定パネルの「画像を保存」から、現在の3D表示を高解像度なPNG画像として保存できます。
                 </p>
               </div>
             </div>
