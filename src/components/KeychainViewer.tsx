@@ -39,8 +39,8 @@ const ENV_PRESET_LIGHTS: Record<EnvironmentPreset, {
   night: { ambientColor: 0x93c5fd, dirColor: 0x93c5fd, dirIntensity: 0.8 },
   outdoor: { ambientColor: 0xfffbeb, dirColor: 0xfffbeb, dirIntensity: 1.5 },
   city: { ambientColor: 0xf8fafc, dirColor: 0xf8fafc, dirIntensity: 1.4 },
-  sunrise: { ambientColor: 0xfef08a, dirColor: 0xfef08a, dirIntensity: 1.5 },
-  indoor: { ambientColor: 0xfef3c7, dirColor: 0xfef3c7, dirIntensity: 1.25 },
+  industrial_sunset: { ambientColor: 0xfdba74, dirColor: 0xfb923c, dirIntensity: 1.5 },
+  lebombo: { ambientColor: 0xfefce8, dirColor: 0xfffbeb, dirIntensity: 1.45 },
 };
 
 export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
@@ -444,21 +444,18 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
           if (envPreset === 'night') {
             c.color.setHex(0x93c5fd);
             c.intensity = 0.8;
-          } else if (envPreset === 'sunrise') {
-            c.color.setHex(0xfef08a);
+          } else if (envPreset === 'industrial_sunset') {
+            c.color.setHex(0xfb923c);
             c.intensity = 1.5;
           } else if (envPreset === 'sunset') {
             c.color.setHex(0xfb923c);
             c.intensity = 1.4;
-          } else if (envPreset === 'outdoor') {
+          } else if (envPreset === 'outdoor' || envPreset === 'lebombo') {
             c.color.setHex(0xfffbeb);
             c.intensity = 1.5;
           } else if (envPreset === 'bridge' || envPreset === 'city') {
             c.color.setHex(0xf8fafc);
             c.intensity = 1.4;
-          } else if (envPreset === 'indoor') {
-            c.color.setHex(0xfef3c7);
-            c.intensity = 1.25;
           } else {
             // studio
             c.color.setHex(0xffffff);

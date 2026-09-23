@@ -3,10 +3,10 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 export type EnvironmentPreset =
   | 'studio'
-  | 'indoor'
+  | 'lebombo'
   | 'outdoor'
   | 'sunset'
-  | 'sunrise'
+  | 'industrial_sunset'
   | 'bridge'
   | 'city'
   | 'night';
@@ -29,11 +29,12 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     description: 'ニュートラルで清潔なソフトボックス照明（標準）',
   },
   {
-    id: 'indoor',
-    name: '室内・窓辺',
-    category: '室内',
-    icon: '🏠',
-    description: 'お部屋の窓から差し込む暖かな自然光',
+    id: 'lebombo',
+    name: '山岳・丘陵（レボンボ）',
+    category: '屋外',
+    icon: '⛰️',
+    description: '晴天の澄んだ光と広大な山並みの風景',
+    hdrFile: '/environments/lebombo_2k.hdr',
   },
   {
     id: 'outdoor',
@@ -52,12 +53,12 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     hdrFile: '/environments/venice_sunset_2k.hdr',
   },
   {
-    id: 'sunrise',
-    name: '朝焼けの海',
-    category: '朝',
-    icon: '🌅',
-    description: '水平線から昇る朝日と穏やかな波打ち際',
-    hdrFile: '/environments/blouberg_sunrise_2_2k.hdr',
+    id: 'industrial_sunset',
+    name: '夕暮れの空',
+    category: '夕景',
+    icon: '🌇',
+    description: '工場地帯から見上げる鮮やかな夕焼け空',
+    hdrFile: '/environments/industrial_sunset_puresky_2k.hdr',
   },
   {
     id: 'bridge',
@@ -99,82 +100,26 @@ export function createEnvironmentCanvas(preset: EnvironmentPreset): HTMLCanvasEl
   const h = canvas.height;
   const horizon = h * 0.52;
 
-  if (preset === 'indoor') {
-    // 室内 (Indoor / 部屋・窓辺)
-    const wallGrad = ctx.createLinearGradient(0, 0, 0, horizon);
-    wallGrad.addColorStop(0, '#e2e8f0');
-    wallGrad.addColorStop(0.4, '#cbd5e1');
-    wallGrad.addColorStop(1, '#94a3b8');
-    ctx.fillStyle = wallGrad;
-    ctx.fillRect(0, 0, w, horizon);
+  // デフォルト・スタジオプロシージャル（studio またはフォールバック用）
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+  bgGrad.addColorStop(0, '#1e293b');
+  bgGrad.addColorStop(0.5, '#334155');
+  bgGrad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, w, h);
 
-    const floorGrad = ctx.createLinearGradient(0, horizon, 0, h);
-    floorGrad.addColorStop(0, '#78350f');
-    floorGrad.addColorStop(0.3, '#92400e');
-    floorGrad.addColorStop(1, '#451a03');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(0, horizon, w, h - horizon);
+  ctx.fillStyle = '#ffffff';
+  ctx.filter = 'blur(16px)';
+  ctx.fillRect(w * 0.25, h * 0.05, w * 0.5, h * 0.18);
 
-    // 床の光の反射
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-    ctx.filter = 'blur(30px)';
-    ctx.fillRect(w * 0.2, horizon, w * 0.4, h * 0.3);
-    ctx.filter = 'none';
+  ctx.fillStyle = '#f8fafc';
+  ctx.filter = 'blur(20px)';
+  ctx.fillRect(w * 0.08, h * 0.15, w * 0.12, h * 0.45);
 
-    // 大きな窓
-    ctx.save();
-    ctx.fillStyle = '#ffffff';
-    ctx.filter = 'blur(8px)';
-    ctx.fillRect(w * 0.22, h * 0.12, w * 0.32, horizon - h * 0.15);
-
-    ctx.filter = 'none';
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(w * 0.22, h * 0.12, w * 0.32, horizon - h * 0.15);
-    ctx.beginPath();
-    ctx.moveTo(w * 0.38, h * 0.12);
-    ctx.lineTo(w * 0.38, horizon - h * 0.03);
-    ctx.moveTo(w * 0.22, h * 0.28);
-    ctx.lineTo(w * 0.54, h * 0.28);
-    ctx.stroke();
-    ctx.restore();
-
-    // ダウンライト
-    const addDownlight = (cx: number, cy: number, r: number) => {
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, '#fffbeb');
-      g.addColorStop(0.3, 'rgba(254, 243, 199, 0.8)');
-      g.addColorStop(1, 'rgba(244, 243, 199, 0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-    };
-    addDownlight(w * 0.75, h * 0.1, 80);
-    addDownlight(w * 0.08, h * 0.08, 60);
-
-  } else {
-    // デフォルト・スタジオプロシージャル
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-    bgGrad.addColorStop(0, '#1e293b');
-    bgGrad.addColorStop(0.5, '#334155');
-    bgGrad.addColorStop(1, '#0f172a');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.filter = 'blur(16px)';
-    ctx.fillRect(w * 0.25, h * 0.05, w * 0.5, h * 0.18);
-
-    ctx.fillStyle = '#f8fafc';
-    ctx.filter = 'blur(20px)';
-    ctx.fillRect(w * 0.08, h * 0.15, w * 0.12, h * 0.45);
-
-    ctx.fillStyle = '#bae6fd';
-    ctx.filter = 'blur(24px)';
-    ctx.fillRect(w * 0.8, h * 0.2, w * 0.12, h * 0.4);
-    ctx.filter = 'none';
-  }
+  ctx.fillStyle = '#bae6fd';
+  ctx.filter = 'blur(24px)';
+  ctx.fillRect(w * 0.8, h * 0.2, w * 0.12, h * 0.4);
+  ctx.filter = 'none';
 
   return canvas;
 }
