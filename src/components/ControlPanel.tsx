@@ -160,7 +160,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </div>
         </section>
 
-        <hr className="border-t-2 border-gray-300" />
+        <hr className="border-t-2 border-gray-300 -mx-6" />
 
         {/* 2. アクキー設定 */}
         <section className="space-y-3">
@@ -228,7 +228,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </div>
         </section>
 
-        <hr className="border-t-2 border-gray-300" />
+        <hr className="border-t-2 border-gray-300 -mx-6" />
 
         {/* 4. 3Dビュー・背景と環境光 ＆ 背景色 */}
         <section className="space-y-3.5">
