@@ -41,7 +41,7 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     category: '屋外',
     icon: '🌳',
     description: '晴天の太陽光と大自然の澄み切った光',
-    hdrFile: '/environments/quarry_01_1k.hdr',
+    hdrFile: '/environments/quarry_01_2k.hdr',
   },
   {
     id: 'sunset',
@@ -49,7 +49,7 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     category: '夕景',
     icon: '🌇',
     description: 'ヴェネツィアの運河に沈むドラマチックな夕日',
-    hdrFile: '/environments/venice_sunset_1k.hdr',
+    hdrFile: '/environments/venice_sunset_2k.hdr',
   },
   {
     id: 'sunrise',
@@ -57,7 +57,7 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     category: '朝',
     icon: '🌅',
     description: '水平線から昇る朝日と穏やかな波打ち際',
-    hdrFile: '/environments/blouberg_sunrise_2_1k.hdr',
+    hdrFile: '/environments/blouberg_sunrise_2_2k.hdr',
   },
   {
     id: 'bridge',
@@ -73,7 +73,7 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     category: '街並み',
     icon: '🏙️',
     description: '歩道橋から見渡すモダンな都市空間',
-    hdrFile: '/environments/pedestrian_overpass_1k.hdr',
+    hdrFile: '/environments/pedestrian_overpass_2k.hdr',
   },
   {
     id: 'night',
@@ -81,7 +81,7 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
     category: '夜景',
     icon: '🌌',
     description: '静寂の夜空に瞬く無数の星々のきらめき',
-    hdrFile: '/environments/moonless_golf_1k.hdr',
+    hdrFile: '/environments/moonless_golf_2k.hdr',
   },
 ];
 
@@ -91,8 +91,8 @@ export const ENVIRONMENT_PRESETS: EnvironmentPresetItem[] = [
  */
 export function createEnvironmentCanvas(preset: EnvironmentPreset): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 512;
+  canvas.width = 2048;
+  canvas.height = 1024;
   const ctx = canvas.getContext('2d')!;
 
   const w = canvas.width;
