@@ -21,6 +21,7 @@ export interface ViewerProps {
   illustrationEnvInfluence?: number; // イラストへの環境光の影響度 (0〜100, デフォルト: 30)
   lightingParams?: LightingDebugParams; // デバッグ用ライティング・マテリアル調整値
   showControlPoints?: boolean; // デバッグ用：アクリル外枠の制御点・ハンドル表示
+  isMobilePanelOpen?: boolean; // スマホでメニューバーが開いているかどうか
 }
 
 export interface ViewerHandle {
@@ -56,6 +57,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
   illustrationEnvInfluence = 30,
   lightingParams = DEFAULT_LIGHTING_PARAMS,
   showControlPoints = false,
+  isMobilePanelOpen = true,
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -198,6 +200,22 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     return { fov: 38, distance: 14, isMobile: false };
   };
 
+  // スマホでメニューバーが開いている時、アクキーと背景を画面25%上にシフトする関数
+  const updateCameraViewOffset = () => {
+    if (!cameraRef.current || !canvasRef.current) return;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    const w = canvasRef.current.clientWidth;
+    const h = canvasRef.current.clientHeight;
+
+    if (isMobile && isMobilePanelOpen) {
+      // 画面25%上に表示（カメラ視点を下方向に25%オフセットし、被写体を画面上部50vhの中央へシフト）
+      cameraRef.current.setViewOffset(w, h, 0, Math.round(h * 0.25), w, h);
+    } else {
+      cameraRef.current.clearViewOffset();
+    }
+    cameraRef.current.updateProjectionMatrix();
+  };
+
   // ズーム（カメラ距離）の適用関数（factor > 1 で縮小・遠ざかる, factor < 1 で拡大・近づく）
   const applyZoom = (factor: number) => {
     if (!cameraRef.current) return;
@@ -207,7 +225,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     const maxZ = 28.0;
     const newZ = Math.max(minZ, Math.min(maxZ, camera.position.z * factor));
     camera.position.z = newZ;
-    camera.updateProjectionMatrix();
+    updateCameraViewOffset();
 
     if (controlsRef.current) {
       controlsRef.current.update();
@@ -264,7 +282,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
         const profile = getCameraProfile();
         cameraRef.current.fov = profile.fov;
         cameraRef.current.position.set(0, 0, profile.distance);
-        cameraRef.current.updateProjectionMatrix();
+        updateCameraViewOffset();
         controlsRef.current.target.set(0, 0, 0);
         controlsRef.current.update();
       }
@@ -292,6 +310,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
     const camera = new THREE.PerspectiveCamera(profile.fov, width / height, 0.1, 100);
     camera.position.set(0, 0, profile.distance);
     cameraRef.current = camera;
+    updateCameraViewOffset();
 
     const renderer = new THREE.WebGLRenderer({
       canvas: canvas,
@@ -383,7 +402,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       const profile = getCameraProfile();
       camera.fov = profile.fov;
       camera.aspect = w / h;
-      camera.updateProjectionMatrix();
+      updateCameraViewOffset();
       renderer.setSize(w, h, false);
       renderScene();
       const m = getCircleMetrics();
@@ -414,6 +433,16 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       rimLightRef.current = null;
     };
   }, []);
+
+  // スマホでメニューバー開閉時にカメラの画面25%上シフトを連動更新
+  useEffect(() => {
+    updateCameraViewOffset();
+    renderScene();
+    const m = getCircleMetrics();
+    if (m) {
+      setCircleInfo(prev => prev ? { ...prev, x: m.x, y: m.y, radius: m.radius } : null);
+    }
+  }, [isMobilePanelOpen]);
 
   // 3. 環境天球（スタジオ/運河/朝焼け/夕景/青空/街並み/星空/室内）＆背景の同期
   useEffect(() => {

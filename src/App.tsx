@@ -155,6 +155,7 @@ export const App: React.FC = () => {
             illustrationEnvInfluence={illustrationEnvInfluence}
             lightingParams={lightingParams}
             showControlPoints={showControlPoints}
+            isMobilePanelOpen={isMobilePanelOpen}
           />
         )}
       </main>
