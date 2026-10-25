@@ -136,20 +136,23 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative flex flex-col lg:flex-row w-screen h-screen overflow-hidden bg-white font-sans text-gray-800">
+    <div className="relative flex flex-col lg:flex-row w-screen h-screen overflow-hidden bg-white text-gray-800 select-none">
       {/* メイン3Dプレビュー領域（モバイル時は全画面、PC時は右側フレックス領域） */}
-      <main className="w-full h-full lg:flex-1 relative overflow-hidden bg-gray-100">
+      <main className="w-full h-full lg:flex-1 relative overflow-hidden bg-[#CCCCCC]">
         {/* 背景左上の使い方ボタン */}
-        <button
-          type="button"
-          onClick={() => setShowHelpModal(true)}
-          className="absolute top-4 left-4 z-20 h-8 px-2.5 flex items-center gap-1.5 bg-white hover:bg-gray-50 active:bg-gray-100 border border-gray-300 text-gray-800 text-xs font-medium shadow-sm rounded-none cursor-pointer transition-colors"
-          title="使い方"
-          aria-label="使い方を表示"
-        >
-          <Info className="w-3.5 h-3.5 text-gray-700" />
-          <span>使い方</span>
-        </button>
+        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowHelpModal(true)}
+            className="btn-surface flex items-center gap-1.5 text-[13px]"
+            style={{ padding: '4px 10px' }}
+            title="使い方"
+            aria-label="使い方を表示"
+          >
+            <Info className="w-3.5 h-3.5 accent-text" />
+            <span>使い方</span>
+          </button>
+        </div>
 
         {imageSrc && (
           <KeychainViewer
@@ -173,34 +176,52 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* 操作パネル（PC: 左側固定サイドバー / スマホ: 画面下部半分固定・開閉ボトムシート） */}
+      {/* 操作パネル（PC: 左側410px固定サイドバー / スマホ: 画面下部半分固定・開閉ボトムシート） */}
       <aside
         className={`
-          bg-white shadow-xl lg:shadow-sm border-gray-200 z-30 flex flex-col
+          bg-white shadow-xl lg:shadow-none border-gray-300 z-30 flex flex-col
           transition-all duration-300 ease-in-out
-          lg:order-first lg:relative lg:w-[420px] lg:h-full lg:border-r lg:border-t-0 lg:shadow-none
-          fixed bottom-0 left-0 right-0 border-t
+          lg:order-first lg:relative lg:w-[410px] lg:h-full lg:border-r lg:border-t-0
+          fixed bottom-0 left-0 right-0 border-t shrink-0 overflow-hidden
           ${isMobilePanelOpen ? 'h-[50vh]' : 'h-11'}
         `}
       >
-        {/* モバイル専用：開閉ヘッダーバー */}
-        <button
-          type="button"
-          onClick={toggleMobilePanel}
-          className="lg:hidden flex items-center justify-between px-4 h-11 shrink-0 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] text-gray-800 text-[13px] font-medium border-b border-gray-300 rounded-none cursor-pointer transition-colors select-none"
-        >
+        {/* モバイル専用：開閉バー ＋ クイック保存ボタン */}
+        <div className="lg:hidden flex items-center justify-between pl-4 pr-2.5 h-11 shrink-0 bg-[#e8e8e8] border-b border-gray-300 select-none">
+          <button
+            type="button"
+            onClick={toggleMobilePanel}
+            className="flex items-center gap-2 h-full flex-1 text-left text-gray-800 text-[13px] cursor-pointer"
+          >
+            <span className="w-5 h-1 bg-gray-500" />
+            <span className="font-bold">設定</span>
+            <span className="text-[13px] text-gray-500 ml-1">
+              {isMobilePanelOpen ? '（タップで閉じる）' : '（タップで開く）'}
+            </span>
+          </button>
           <div className="flex items-center gap-2">
-            <span className="w-6 h-1 bg-gray-500 rounded-full" />
-            <span>設定</span>
+            <button
+              type="button"
+              onClick={handleCaptureScreenshot}
+              className="btn-primary text-[13px]"
+              style={{ padding: '3px 10px' }}
+            >
+              画像を保存
+            </button>
+            <button
+              type="button"
+              onClick={toggleMobilePanel}
+              className="p-1.5 text-gray-700 cursor-pointer"
+              aria-label={isMobilePanelOpen ? '設定パネルを閉じる' : '設定パネルを開く'}
+            >
+              {isMobilePanelOpen ? (
+                <ChevronDown className="w-4 h-4 text-gray-700" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-gray-700" />
+              )}
+            </button>
           </div>
-          <div className="flex items-center text-gray-600">
-            {isMobilePanelOpen ? (
-              <ChevronDown className="w-4 h-4 text-gray-700" />
-            ) : (
-              <ChevronUp className="w-4 h-4 text-gray-700" />
-            )}
-          </div>
-        </button>
+        </div>
 
         {/* コントロールパネル本体 */}
         <div className={`flex-1 overflow-hidden flex flex-col ${!isMobilePanelOpen ? 'hidden lg:flex' : 'flex'}`}>
@@ -241,19 +262,19 @@ export const App: React.FC = () => {
           onClick={() => setShowHelpModal(false)}
         >
           <div
-            className="bg-white border border-gray-300 shadow-xl max-w-sm w-full p-5 rounded-none text-gray-800 animate-in fade-in zoom-in-95 duration-150"
+            className="bg-white border border-[#A3A3A3] accent-border-top shadow-xl max-w-sm w-full p-5 rounded-none text-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             {/* ヘッダー */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
-              <div className="flex items-center gap-2 font-bold text-gray-800 text-sm">
-                <Info className="w-4 h-4 text-gray-700" />
+              <div className="flex items-center gap-2 font-normal text-gray-900 text-[14px]">
+                <Info className="w-4 h-4 accent-text" />
                 <span>操作方法・使い方</span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="w-7 h-7 flex items-center justify-center bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-gray-700 rounded-none cursor-pointer transition-colors"
+                className="text-gray-500 hover:text-gray-800 p-1 cursor-pointer"
                 aria-label="閉じる"
               >
                 <X className="w-4 h-4" />
@@ -261,10 +282,10 @@ export const App: React.FC = () => {
             </div>
 
             {/* ガイド一覧 */}
-            <div className="space-y-3.5 text-xs leading-relaxed text-gray-600">
+            <div className="space-y-3.5 text-[13px] leading-relaxed text-gray-600 select-text">
               <div>
-                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
+                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
+                  <span className="sq-dot" />
                   画像の読み込み
                 </p>
                 <p className="pl-3.5">
@@ -273,8 +294,8 @@ export const App: React.FC = () => {
               </div>
 
               <div>
-                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
+                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
+                  <span className="sq-dot" />
                   キーホルダーの回転
                 </p>
                 <p className="pl-3.5">
@@ -283,8 +304,8 @@ export const App: React.FC = () => {
               </div>
 
               <div>
-                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
+                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
+                  <span className="sq-dot" />
                   背景・視点の回転
                 </p>
                 <p className="pl-3.5">
@@ -293,8 +314,8 @@ export const App: React.FC = () => {
               </div>
 
               <div>
-                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
+                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
+                  <span className="sq-dot" />
                   拡大・縮小（ズーム）
                 </p>
                 <p className="pl-3.5">
@@ -303,8 +324,8 @@ export const App: React.FC = () => {
               </div>
 
               <div>
-                <p className="font-semibold text-gray-800 mb-0.5 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 bg-gray-600 rounded-full" />
+                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
+                  <span className="sq-dot" />
                   画像の保存
                 </p>
                 <p className="pl-3.5">
@@ -314,11 +335,11 @@ export const App: React.FC = () => {
             </div>
 
             {/* フッター閉じるボタン */}
-            <div className="mt-5 pt-3 border-t border-gray-100">
+            <div className="mt-5 pt-3 border-t border-gray-200 flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="w-full py-2 bg-[#e8e8e8] hover:bg-[#dedede] active:bg-[#d4d4d4] border border-gray-300 text-xs font-medium text-gray-800 rounded-none cursor-pointer transition-colors"
+                className="btn-std"
               >
                 閉じる
               </button>

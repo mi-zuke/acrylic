@@ -653,8 +653,8 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       curveSegments: 36,
     };
 
-    console.log('[DEBUG] Generating geometry. Outline points:', cutPath.outlinePoints.length, 'holes:', cutPath.shape.holes.length);
-    const geometry = new THREE.ExtrudeGeometry(cutPath.shape, extrudeSettings);
+    const targetShapes = cutPath.shapes && cutPath.shapes.length > 0 ? cutPath.shapes : [cutPath.shape];
+    const geometry = new THREE.ExtrudeGeometry(targetShapes, extrudeSettings);
     geometry.computeBoundingBox();
 
     // 金属パーツを除いたアクリル板本体の中心を画面中心(0,0,0)に配置
@@ -894,12 +894,16 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
         linePositions.push(seg.p1.x, seg.p1.y, zPos, seg.cp2.x, seg.cp2.y, zPos);
 
         // ベジェ曲線自体のサンプリング線 (輪郭ガイド)
-        for (let t = 0; t <= 10; t++) {
+        let prevX = seg.p0.x;
+        let prevY = seg.p0.y;
+        for (let t = 1; t <= 10; t++) {
           const ratio = t / 10;
           const u = 1 - ratio;
           const bx = u * u * u * seg.p0.x + 3 * u * u * ratio * seg.cp1.x + 3 * u * ratio * ratio * seg.cp2.x + ratio * ratio * ratio * seg.p1.x;
           const by = u * u * u * seg.p0.y + 3 * u * u * ratio * seg.cp1.y + 3 * u * ratio * ratio * seg.cp2.y + ratio * ratio * ratio * seg.p1.y;
-          curvePositions.push(bx, by, zPos);
+          curvePositions.push(prevX, prevY, zPos, bx, by, zPos);
+          prevX = bx;
+          prevY = by;
         }
       });
 
@@ -917,7 +921,7 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
         const curveGeo = new THREE.BufferGeometry();
         curveGeo.setAttribute('position', new THREE.Float32BufferAttribute(curvePositions, 3));
         const curveMat = new THREE.LineBasicMaterial({ color: 0x22c55e, depthTest: false });
-        const curveLine = new THREE.Line(curveGeo, curveMat);
+        const curveLine = new THREE.LineSegments(curveGeo, curveMat);
         debugGroup.add(curveLine);
       }
 

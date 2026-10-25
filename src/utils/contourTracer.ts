@@ -22,6 +22,7 @@ export interface BezierSegment {
 
 export interface GeneratedCutPath {
   shape: THREE.Shape;
+  shapes: THREE.Shape[];
   outlinePoints: THREE.Vector2[];
   bezierSegments: BezierSegment[];
   holeCenter: THREE.Vector2;
@@ -79,32 +80,42 @@ export async function generateAcrylicCutPath(
 
   const imgData = ctx.getImageData(0, 0, canvasW, canvasH);
 
-  // 2. アルファチャンネルから画像の輪郭ポリゴン（外周）を抽出
-  const rawContour = extractContourAlpha(imgData, 20);
+  // 2. アルファチャンネルから画像のすべての連結成分（島）の輪郭ポリゴンを抽出
+  const rawContours = extractAllContoursAlpha(imgData, 20);
 
-  // 画像内に画素がない場合のフォールバック（四角形）
-  const basePolygon: Point2D[] = rawContour.length > 5 ? rawContour : [
-    { x: pad, y: pad },
-    { x: pad + workW, y: pad },
-    { x: pad + workW, y: pad + workH },
-    { x: pad, y: pad + workH },
+  // 画像内に有効な輪郭がない場合のフォールバック（四角形）
+  const basePolygons: Point2D[][] = rawContours.length > 0 ? rawContours : [
+    [
+      { x: pad, y: pad },
+      { x: pad + workW, y: pad },
+      { x: pad + workW, y: pad + workH },
+      { x: pad, y: pad + workH },
+    ]
   ];
 
-  // 微細なピクセル階段ノイズを Douglas-Peucker で整理 (1.2px)
-  const simplifiedBase = simplifyPolygonDP(basePolygon, 1.2);
+  // 微細なピクセル階段ノイズを閉曲線対応 Douglas-Peucker で整理 (1.2px)
+  const simplifiedBases = basePolygons
+    .map(poly => {
+      const simplified = simplifyClosedPolygonDP(poly, 1.2);
+      return simplified.length >= 3 ? simplified : poly;
+    })
+    .filter(poly => poly.length >= 3);
 
-  // 3. ClipperLib による「最小余白」Round offset 計算
-  // 凸角は半径 offsetMargin の円弧、凹角は幾何学的な交差角になる
-  const offsetPolygons = offsetPolygonWithClipper(simplifiedBase, offsetMargin);
-  let mainOffsetPoly = offsetPolygons[0] || simplifiedBase;
+  const finalBases = simplifiedBases.length > 0 ? simplifiedBases : basePolygons;
+
+  // 3. ClipperLib による「最小余白」Round offset 計算（すべての島を同時にオフセット）
+  // 近接する島は自動的にマージされ、離れた島はそれぞれ独立したオフセットポリゴンとなる
+  const offsetExPolys = offsetPolygonsWithClipper(finalBases, offsetMargin);
 
   // 4. キーホルダー用タブ（丸穴用突起）の作成と結合
-  // 画像の上部位置を特定
+  // 全要素の上部および左右の範囲を特定
   let minY = canvasH, minX = canvasW, maxX = 0;
-  for (const pt of simplifiedBase) {
-    if (pt.y < minY) minY = pt.y;
-    if (pt.x < minX) minX = pt.x;
-    if (pt.x > maxX) maxX = pt.x;
+  for (const base of finalBases) {
+    for (const pt of base) {
+      if (pt.y < minY) minY = pt.y;
+      if (pt.x < minX) minX = pt.x;
+      if (pt.x > maxX) maxX = pt.x;
+    }
   }
   const contentCenterX = (minX + maxX) / 2;
   const targetTabX = contentCenterX + (holeOffsetX / 100) * ((maxX - minX) * 0.4);
@@ -121,39 +132,101 @@ export async function generateAcrylicCutPath(
   const wallThicknessPx = 2.0 * (naturalLongest / 70);
   const tabR = holeRPx + wallThicknessPx; // タブの外周半径
 
-  // targetTabX 付近でのオフセットポリゴンの最上部Yを検索
+  // targetTabX 付近でのオフセットポリゴンの最上部Yを検索（全オフセットポリゴンから探索）
   let localMinY = canvasH;
-  for (const pt of mainOffsetPoly) {
-    if (Math.abs(pt.x - targetTabX) < tabR * 0.9) {
-      if (pt.y < localMinY) localMinY = pt.y;
+  let effectiveTabX = targetTabX;
+
+  for (const ep of offsetExPolys) {
+    for (const pt of ep.outer) {
+      const px = pt.X / CLIPPER_SCALE;
+      const py = pt.Y / CLIPPER_SCALE;
+      if (Math.abs(px - targetTabX) < tabR * 0.9) {
+        if (py < localMinY) localMinY = py;
+      }
     }
   }
-  if (localMinY === canvasH) localMinY = minY - offsetMargin;
+
+  // もし targetTabX 直下にアクリルが存在しない場合（空白の隙間にある場合）：
+  // 最寄りの島の最上部（ピーク）に安全にスナップし、中空浮きや側部への偏りを防止
+  if (localMinY === canvasH && offsetExPolys.length > 0) {
+    let bestIsland = offsetExPolys[0];
+    let bestScore = Infinity;
+
+    for (const ep of offsetExPolys) {
+      let islandMinX = Infinity, islandMaxX = -Infinity;
+      let islandMinY = Infinity;
+      for (const pt of ep.outer) {
+        const px = pt.X / CLIPPER_SCALE;
+        const py = pt.Y / CLIPPER_SCALE;
+        if (px < islandMinX) islandMinX = px;
+        if (px > islandMaxX) islandMaxX = px;
+        if (py < islandMinY) islandMinY = py;
+      }
+
+      // targetTabX からの水平距離
+      let hDist = 0;
+      if (targetTabX < islandMinX) hDist = islandMinX - targetTabX;
+      else if (targetTabX > islandMaxX) hDist = targetTabX - islandMaxX;
+
+      // 距離を優先しつつ、より上部にある島を優先
+      const score = hDist + islandMinY * 0.1;
+      if (score < bestScore) {
+        bestScore = score;
+        bestIsland = ep;
+      }
+    }
+
+    // bestIsland の最上部（ピーク）の X 座標を決定
+    let islandMinY = Infinity;
+    for (const pt of bestIsland.outer) {
+      const py = pt.Y / CLIPPER_SCALE;
+      if (py < islandMinY) islandMinY = py;
+    }
+
+    // islandMinY 付近の頂点範囲からピークXを決定（丸い島では頂点中央、平らな上辺では端から内側にクランプ）
+    let peakMinX = Infinity, peakMaxX = -Infinity;
+    for (const pt of bestIsland.outer) {
+      const px = pt.X / CLIPPER_SCALE;
+      const py = pt.Y / CLIPPER_SCALE;
+      if (py <= islandMinY + 2) {
+        if (px < peakMinX) peakMinX = px;
+        if (px > peakMaxX) peakMaxX = px;
+      }
+    }
+
+    if (peakMinX <= peakMaxX) {
+      const peakCenterX = (peakMinX + peakMaxX) / 2;
+      const safeLeft = Math.min(peakCenterX, peakMinX + tabR * 0.5);
+      const safeRight = Math.max(peakCenterX, peakMaxX - tabR * 0.5);
+      effectiveTabX = Math.max(safeLeft, Math.min(safeRight, targetTabX));
+    } else {
+      effectiveTabX = targetTabX;
+    }
+
+    localMinY = canvasH;
+    for (const pt of bestIsland.outer) {
+      const px = pt.X / CLIPPER_SCALE;
+      const py = pt.Y / CLIPPER_SCALE;
+      if (Math.abs(px - effectiveTabX) < tabR * 0.9) {
+        if (py < localMinY) localMinY = py;
+      }
+    }
+    if (localMinY === canvasH) localMinY = islandMinY;
+  }
 
   // 穴の中心Y: 余計な空白を作らず、本体オフセットのすぐ上（絵柄に近い位置）に配置
-  // 絵柄と穴の間の余白はコンパクトに抑えつつ、穴上端から外枠までの肉厚を確実に確保
   const tabCenterY = localMinY - holeRPx * 0.25;
   // タブの裾野を本体内部深くまで伸ばして確実にUnion結合
   const tabBottomY = localMinY + offsetMargin + 20;
 
   // タブポリゴン（半円突起＋接続台形）
-  const tabPoly = createTabPolygon(targetTabX, tabCenterY, tabR, tabBottomY);
+  const tabPoly = createTabPolygon(effectiveTabX, tabCenterY, tabR, tabBottomY);
 
-  // ClipperLib によるオフセット輪郭とタブの Union 結合
-  const unionPaths = unionPolygons(mainOffsetPoly, tabPoly);
-  const mergedOutline = unionPaths[0] || mainOffsetPoly;
+  // ClipperLib によるオフセット輪郭群とタブの Union 結合
+  const mergedExPolys = unionExPolygonsWithTab(offsetExPolys, tabPoly);
 
-  // 5. 頂点列の適度な整理（曲線の制御点生成用）
-  // smoothness パラメータに応じた許容誤差 (0.8〜2.5px)
+  // 5. 頂点列の適度な整理とベジェ曲線の構築
   const dpTolerance = 0.5 + smoothness * 0.35;
-  const cleanOutline = simplifyPolygonDP(mergedOutline, dpTolerance);
-
-  // 6. 「曲線の集合（Corner-preserving Bézier Curves）」の構築
-  // 角（Sharp Corner）を検出し、角では非平滑な接続、曲線区間では滑らかなベジェ曲線セグメントを生成
-  const bezierSegments = fitCornerPreservingBezier(cleanOutline, 45); // 45度以上は角とする
-
-  // 7. Three.js 座標系への変換
-  // 元画像の中央（pad + workW / 2, pad + workH / 2）を原点 (0, 0) とする
   const origCenterX = pad + workW / 2;
   const origCenterY = pad + workH / 2;
 
@@ -164,54 +237,11 @@ export async function generateAcrylicCutPath(
     );
   };
 
-  // Three.js の Shape 外枠の向き（CCW反時計回り）を確認
-  const worldPoints: THREE.Vector2[] = cleanOutline.map(toWorld);
-  const isClockwise = THREE.ShapeUtils.isClockWise(worldPoints);
-
-  // 3次ベジェ曲線の集合から THREE.Shape を構築
-  const shape = new THREE.Shape();
-  const worldBezierSegments: BezierSegment[] = [];
-
-  if (bezierSegments.length > 0) {
-    // 向きが時計回りの場合は反転
-    const segmentsToUse = isClockwise ? reverseBezierSegments(bezierSegments) : bezierSegments;
-
-    const startPt = toWorld(segmentsToUse[0].p0);
-    shape.moveTo(startPt.x, startPt.y);
-
-    for (const seg of segmentsToUse) {
-      const cp1 = toWorld(seg.cp1);
-      const cp2 = toWorld(seg.cp2);
-      const p1 = toWorld(seg.p1);
-
-      shape.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p1.x, p1.y);
-
-      worldBezierSegments.push({
-        p0: toWorld(seg.p0),
-        cp1,
-        cp2,
-        p1,
-        isSharpStart: seg.isSharpStart,
-      });
-    }
-    shape.closePath();
-  } else {
-    // フォールバック
-    const p0 = toWorld(cleanOutline[0]);
-    shape.moveTo(p0.x, p0.y);
-    for (let i = 1; i < cleanOutline.length; i++) {
-      const p = toWorld(cleanOutline[i]);
-      shape.lineTo(p.x, p.y);
-    }
-    shape.closePath();
-  }
-
-  // 8. キーホルダー用の穴（Hole）の作成
-  const holeWorldX = (targetTabX - origCenterX) * worldScale;
+  const holeWorldX = (effectiveTabX - origCenterX) * worldScale;
   const holeWorldY = -(tabCenterY - origCenterY) * worldScale;
   const holeWorldRadius = (holeDiameter / 2) * (targetSizeWorld / 70);
 
-  // 穴も円弧パス（ベジェ曲線の集合）として構築
+  // キーホルダー穴のパス（ベジェ曲線の集合）を生成
   const holePath = new THREE.Path();
   const holePoints: THREE.Vector2[] = [];
   const holeSegs = 32;
@@ -222,7 +252,7 @@ export async function generateAcrylicCutPath(
       holeWorldY + Math.sin(theta) * holeWorldRadius
     ));
   }
-  // holes は時計回り (CW)
+  // Three.js の holes は時計回り (CW)
   if (!THREE.ShapeUtils.isClockWise(holePoints)) {
     holePoints.reverse();
   }
@@ -231,26 +261,166 @@ export async function generateAcrylicCutPath(
     else holePath.lineTo(p.x, p.y);
   });
   holePath.closePath();
-  shape.holes.push(holePath);
 
-  // 9. 2DプレビューとSVGパスデータの生成
-  // プレビューCanvas上にベジェ曲線の赤いカットラインを描画
+  // キーホルダー穴の位置判定用 IntPoint
+  const holeIntPoint: ClipperLib.IntPoint = {
+    X: Math.round(effectiveTabX * CLIPPER_SCALE),
+    Y: Math.round(tabCenterY * CLIPPER_SCALE),
+  };
+
+  // キーホルダー穴を付与すべき最適なポリゴンのインデックスを特定
+  let bestHolePolyIdx = 0;
+  let bestHoleDist = Infinity;
+  for (let i = 0; i < mergedExPolys.length; i++) {
+    const ep = mergedExPolys[i];
+    const isInside = ClipperLib.Clipper.PointInPolygon(holeIntPoint, ep.outer) !== 0;
+    if (isInside) {
+      bestHolePolyIdx = i;
+      break;
+    }
+    for (const pt of ep.outer) {
+      const d = (pt.X - holeIntPoint.X) ** 2 + (pt.Y - holeIntPoint.Y) ** 2;
+      if (d < bestHoleDist) {
+        bestHoleDist = d;
+        bestHolePolyIdx = i;
+      }
+    }
+  }
+
+  const allShapes: THREE.Shape[] = [];
+  const allWorldBezierSegments: BezierSegment[] = [];
+  const allWorldPoints: THREE.Vector2[] = [];
+  const canvasBezierLoops: { p0: Point2D; cp1: Point2D; cp2: Point2D; p1: Point2D; isSharpStart: boolean }[][] = [];
+  let holePlaced = false;
+
+  for (let idx = 0; idx < mergedExPolys.length; idx++) {
+    const ep = mergedExPolys[idx];
+    const outerPts: Point2D[] = ep.outer.map(pt => ({
+      x: pt.X / CLIPPER_SCALE,
+      y: pt.Y / CLIPPER_SCALE,
+    }));
+    if (outerPts.length < 3) continue;
+
+    const cleanOuter = simplifyClosedPolygonDP(outerPts, dpTolerance);
+    if (cleanOuter.length < 3) continue;
+
+    const bezierSegments = fitCornerPreservingBezier(cleanOuter, 45);
+    canvasBezierLoops.push(bezierSegments);
+
+    const worldPoints: THREE.Vector2[] = cleanOuter.map(toWorld);
+    const isClockwise = THREE.ShapeUtils.isClockWise(worldPoints);
+
+    const shape = new THREE.Shape();
+    if (bezierSegments.length > 0) {
+      const segmentsToUse = isClockwise ? reverseBezierSegments(bezierSegments) : bezierSegments;
+      const startPt = toWorld(segmentsToUse[0].p0);
+      shape.moveTo(startPt.x, startPt.y);
+
+      for (const seg of segmentsToUse) {
+        const cp1 = toWorld(seg.cp1);
+        const cp2 = toWorld(seg.cp2);
+        const p1 = toWorld(seg.p1);
+        shape.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p1.x, p1.y);
+
+        allWorldBezierSegments.push({
+          p0: toWorld(seg.p0),
+          cp1,
+          cp2,
+          p1,
+          isSharpStart: seg.isSharpStart,
+        });
+      }
+      shape.closePath();
+    } else {
+      const p0 = toWorld(cleanOuter[0]);
+      shape.moveTo(p0.x, p0.y);
+      for (let i = 1; i < cleanOuter.length; i++) {
+        const p = toWorld(cleanOuter[i]);
+        shape.lineTo(p.x, p.y);
+      }
+      shape.closePath();
+    }
+
+    worldPoints.forEach(p => allWorldPoints.push(p));
+
+    // 内側の穴 (holes) があれば処理
+    if (ep.holes && ep.holes.length > 0) {
+      for (const hole of ep.holes) {
+        const holePts: Point2D[] = hole.map(pt => ({
+          x: pt.X / CLIPPER_SCALE,
+          y: pt.Y / CLIPPER_SCALE,
+        }));
+        if (holePts.length < 3) continue;
+
+        const cleanHole = simplifyClosedPolygonDP(holePts, dpTolerance);
+        if (cleanHole.length < 3) continue;
+
+        const holeBezier = fitCornerPreservingBezier(cleanHole, 45);
+        canvasBezierLoops.push(holeBezier);
+
+        const holeWorldPts = cleanHole.map(toWorld);
+        const holeIsCw = THREE.ShapeUtils.isClockWise(holeWorldPts);
+        const holeSegsToUse = !holeIsCw ? reverseBezierSegments(holeBezier) : holeBezier;
+
+        const innerHolePath = new THREE.Path();
+        if (holeSegsToUse.length > 0) {
+          const startHolePt = toWorld(holeSegsToUse[0].p0);
+          innerHolePath.moveTo(startHolePt.x, startHolePt.y);
+          for (const seg of holeSegsToUse) {
+            const cp1 = toWorld(seg.cp1);
+            const cp2 = toWorld(seg.cp2);
+            const p1 = toWorld(seg.p1);
+            innerHolePath.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p1.x, p1.y);
+          }
+          innerHolePath.closePath();
+        } else {
+          const p0 = toWorld(cleanHole[0]);
+          innerHolePath.moveTo(p0.x, p0.y);
+          for (let i = 1; i < cleanHole.length; i++) {
+            const p = toWorld(cleanHole[i]);
+            innerHolePath.lineTo(p.x, p.y);
+          }
+          innerHolePath.closePath();
+        }
+        shape.holes.push(innerHolePath);
+      }
+    }
+
+    // キーホルダー穴をタブが結合されたポリゴンに確実に追加
+    if (idx === bestHolePolyIdx && !holePlaced) {
+      shape.holes.push(holePath);
+      holePlaced = true;
+    }
+
+    allShapes.push(shape);
+  }
+
+  // フォールバック
+  if (!holePlaced && allShapes.length > 0) {
+    const targetShape = allShapes[bestHolePolyIdx] || allShapes[0];
+    targetShape.holes.push(holePath);
+    holePlaced = true;
+  }
+
+  // 6. 2DプレビューとSVGパスデータの生成
+  // プレビューCanvas上にベジェ曲線の赤いカットラインを描画（すべての島）
   ctx.save();
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#ef4444'; // 切断線（赤）
-  ctx.beginPath();
-  if (bezierSegments.length > 0) {
-    ctx.moveTo(bezierSegments[0].p0.x, bezierSegments[0].p0.y);
-    for (const seg of bezierSegments) {
+  for (const loop of canvasBezierLoops) {
+    if (loop.length === 0) continue;
+    ctx.beginPath();
+    ctx.moveTo(loop[0].p0.x, loop[0].p0.y);
+    for (const seg of loop) {
       ctx.bezierCurveTo(seg.cp1.x, seg.cp1.y, seg.cp2.x, seg.cp2.y, seg.p1.x, seg.p1.y);
     }
+    ctx.closePath();
+    ctx.stroke();
   }
-  ctx.closePath();
-  ctx.stroke();
 
   // 穴のプレビュー
   ctx.beginPath();
-  ctx.arc(targetTabX, tabCenterY, holeRPx, 0, Math.PI * 2);
+  ctx.arc(effectiveTabX, tabCenterY, holeRPx, 0, Math.PI * 2);
   ctx.fillStyle = '#1e293b';
   ctx.fill();
   ctx.strokeStyle = '#38bdf8';
@@ -260,148 +430,234 @@ export async function generateAcrylicCutPath(
 
   // SVG パスデータ文字列 (M ... C ... Z)
   let svgD = '';
-  if (bezierSegments.length > 0) {
-    svgD = `M ${bezierSegments[0].p0.x.toFixed(2)} ${bezierSegments[0].p0.y.toFixed(2)}`;
-    for (const seg of bezierSegments) {
+  for (const loop of canvasBezierLoops) {
+    if (loop.length === 0) continue;
+    svgD += `M ${loop[0].p0.x.toFixed(2)} ${loop[0].p0.y.toFixed(2)}`;
+    for (const seg of loop) {
       svgD += ` C ${seg.cp1.x.toFixed(2)} ${seg.cp1.y.toFixed(2)}, ${seg.cp2.x.toFixed(2)} ${seg.cp2.y.toFixed(2)}, ${seg.p1.x.toFixed(2)} ${seg.p1.y.toFixed(2)}`;
     }
-    svgD += ' Z';
+    svgD += ' Z ';
   }
+  // キーホルダー穴も SVG パスに含める
+  svgD += ` M ${(effectiveTabX - holeRPx).toFixed(2)} ${tabCenterY.toFixed(2)}`;
+  svgD += ` A ${holeRPx.toFixed(2)} ${holeRPx.toFixed(2)} 0 1 0 ${(effectiveTabX + holeRPx).toFixed(2)} ${tabCenterY.toFixed(2)}`;
+  svgD += ` A ${holeRPx.toFixed(2)} ${holeRPx.toFixed(2)} 0 1 0 ${(effectiveTabX - holeRPx).toFixed(2)} ${tabCenterY.toFixed(2)} Z `;
+
+  const primaryShape = allShapes[0] || new THREE.Shape();
 
   return {
-    shape,
-    outlinePoints: worldPoints,
-    bezierSegments: worldBezierSegments,
+    shape: primaryShape,
+    shapes: allShapes,
+    outlinePoints: allWorldPoints,
+    bezierSegments: allWorldBezierSegments,
     holeCenter: new THREE.Vector2(holeWorldX, holeWorldY),
     holeRadius: holeWorldRadius,
     width: workW * worldScale,
     height: workH * worldScale,
     previewCanvasUrl: canvas.toDataURL('image/png'),
-    svgPathData: svgD,
+    svgPathData: svgD.trim(),
   };
 }
 
 /**
- * アルファチャンネルから輪郭を抽出 (Illust-toolsのアルゴリズム)
+ * アルファチャンネルからすべての連結成分（島）の輪郭ポリゴンを抽出
  */
-function extractContourAlpha(imageData: ImageData, alphaThreshold: number = 20): Point2D[] {
+function extractAllContoursAlpha(imageData: ImageData, alphaThreshold: number = 20): Point2D[][] {
   const width = imageData.width;
   const height = imageData.height;
   const data = imageData.data;
 
-  const getAlpha = (x: number, y: number) => {
-    if (x < 0 || x >= width || y < 0 || y >= height) return 0;
-    return data[(y * width + x) * 4 + 3];
+  const visited = new Int32Array(width * height);
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+  const contours: Point2D[][] = [];
+
+  const queue = new Int32Array(width * height);
+  let nextCompId = 1;
+
+  const isComp = (x: number, y: number, compId: number) => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return false;
+    return visited[y * width + x] === compId;
   };
 
-  // 上から下、左から右へ走査して最初の不透明ピクセルを見つける
-  let startX = -1, startY = -1;
-  outer: for (let y = 0; y < height; y++) {
+  for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (getAlpha(x, y) >= alphaThreshold) {
-        startX = x;
-        startY = y;
-        break outer;
+      const idx = y * width + x;
+      if (data[idx * 4 + 3] < alphaThreshold || visited[idx] !== 0) continue;
+
+      const compId = nextCompId++;
+      // 8連結 BFS で連結成分（島）の全画素を compId でマーク
+      let head = 0, tail = 0;
+      queue[tail++] = idx;
+      visited[idx] = compId;
+
+      let compMinX = x, compMaxX = x, compMinY = y, compMaxY = y;
+
+      while (head < tail) {
+        const curr = queue[head++];
+        const cx = curr % width;
+        const cy = (curr / width) | 0;
+        if (cx < compMinX) compMinX = cx;
+        if (cx > compMaxX) compMaxX = cx;
+        if (cy < compMinY) compMinY = cy;
+        if (cy > compMaxY) compMaxY = cy;
+
+        for (let d = 0; d < 8; d++) {
+          const nx = cx + dx[d];
+          const ny = cy + dy[d];
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const nidx = ny * width + nx;
+            if (data[nidx * 4 + 3] >= alphaThreshold && visited[nidx] === 0) {
+              visited[nidx] = compId;
+              queue[tail++] = nidx;
+            }
+          }
+        }
+      }
+
+      // 微小なノイズ（4画素未満）は無視
+      if (tail < 4) continue;
+
+      // この島の最上部・最左画素 (x, y) から外周輪郭をトレース (Moore-Neighbor Tracing)
+      const startX = x;
+      const startY = y;
+      const contour: Point2D[] = [];
+      let curX = startX;
+      let curY = startY;
+      let curDir = 7;
+      let steps = 0;
+      const maxSteps = tail * 4 + 16;
+      let initialDir = -1;
+      let trMinX = startX, trMaxX = startX, trMinY = startY, trMaxY = startY;
+
+      do {
+        contour.push({ x: curX, y: curY });
+        if (curX < trMinX) trMinX = curX;
+        if (curX > trMaxX) trMaxX = curX;
+        if (curY < trMinY) trMinY = curY;
+        if (curY > trMaxY) trMaxY = curY;
+
+        let foundNext = false;
+        let dir = (curDir + 6) % 8;
+
+        for (let i = 0; i < 8; i++) {
+          const nx = curX + dx[dir];
+          const ny = curY + dy[dir];
+          if (isComp(nx, ny, compId)) {
+            if (steps === 0) initialDir = dir;
+            curX = nx;
+            curY = ny;
+            curDir = dir;
+            foundNext = true;
+            break;
+          }
+          dir = (dir + 1) % 8;
+        }
+
+        if (!foundNext) break;
+        steps++;
+
+        // 開始点に戻り、かつ最初の移動方向と一致したらトレース完了（Jacob stopping condition）
+        if (curX === startX && curY === startY) {
+          let nextDir = (curDir + 6) % 8;
+          let matchedDir = -1;
+          for (let i = 0; i < 8; i++) {
+            const nx = curX + dx[nextDir];
+            const ny = curY + dy[nextDir];
+            if (isComp(nx, ny, compId)) {
+              matchedDir = nextDir;
+              break;
+            }
+            nextDir = (nextDir + 1) % 8;
+          }
+          if (matchedDir === initialDir) break;
+        }
+      } while (steps < maxSteps);
+
+      if (contour.length >= 3) {
+        contours.push(contour);
+      }
+
+      // 万が一1px突起等でトレースが早期閉路し島全体をカバーできなかった場合のフォールバック
+      if (
+        contour.length < 3 ||
+        trMinX > compMinX + 2 ||
+        trMaxX < compMaxX - 2 ||
+        trMaxY < compMaxY - 2
+      ) {
+        contours.push([
+          { x: compMinX, y: compMinY },
+          { x: compMaxX + 1, y: compMinY },
+          { x: compMaxX + 1, y: compMaxY + 1 },
+          { x: compMinX, y: compMaxY + 1 },
+        ]);
       }
     }
   }
 
-  if (startX === -1) return [];
-
-  const contour: Point2D[] = [];
-  // 方向: 0: 東, 1: 南東, 2: 南, 3: 南西, 4: 西, 5: 北西, 6: 北, 7: 北東
-  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
-  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
-
-  let currentX = startX;
-  let currentY = startY;
-  let currentDir = 7; // 初期方向: 北東
-
-  const maxSteps = width * height;
-  let steps = 0;
-
-  do {
-    contour.push({ x: currentX, y: currentY });
-
-    let foundNext = false;
-    // 左手壁沿い探索 (dir + 6 % 8)
-    let dir = (currentDir + 6) % 8;
-
-    for (let i = 0; i < 8; i++) {
-      const nx = currentX + dx[dir];
-      const ny = currentY + dy[dir];
-
-      if (getAlpha(nx, ny) >= alphaThreshold) {
-        currentX = nx;
-        currentY = ny;
-        currentDir = dir;
-        foundNext = true;
-        break;
-      }
-      dir = (dir + 1) % 8;
-    }
-
-    if (!foundNext) break;
-    steps++;
-  } while (!(currentX === startX && currentY === startY) && steps < maxSteps);
-
-  return contour;
+  return contours;
 }
 
 /**
- * ClipperLib を使った最小余白オフセット（Round Offset）
+ * ClipperLib を使った複数ポリゴンの最小余白オフセット（Round Offset）
  */
-function offsetPolygonWithClipper(points: Point2D[], margin: number): Point2D[][] {
-  if (points.length < 3) return [];
+function offsetPolygonsWithClipper(polygons: Point2D[][], margin: number): ClipperLib.ExPolygons {
+  const paths: ClipperLib.Paths = [];
+  for (const points of polygons) {
+    if (points.length < 3) continue;
+    const path = points.map(p => ({
+      X: Math.round(p.x * CLIPPER_SCALE),
+      Y: Math.round(p.y * CLIPPER_SCALE),
+    }));
+    // 外周ポリゴンは正の向き（Screen座標系ではClockwiseがArea > 0）を保証
+    if (!ClipperLib.Clipper.Orientation(path)) {
+      ClipperLib.Clipper.ReversePath(path);
+    }
+    paths.push(path);
+  }
+  if (paths.length === 0) return [];
 
-  const path = points.map(p => ({
+  const co = new ClipperLib.ClipperOffset();
+  co.ArcTolerance = 0.4 * CLIPPER_SCALE;
+  co.AddPaths(paths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+
+  const polytree = new ClipperLib.PolyTree();
+  co.Execute(polytree, margin * CLIPPER_SCALE);
+
+  return ClipperLib.JS.PolyTreeToExPolygons(polytree);
+}
+
+/**
+ * オフセット済みポリゴン群とキーホルダー穴タブのブーリアン結合（Union）
+ */
+function unionExPolygonsWithTab(
+  exPolys: ClipperLib.ExPolygons,
+  tabPoly: Point2D[]
+): ClipperLib.ExPolygons {
+  const c = new ClipperLib.Clipper();
+  for (const ep of exPolys) {
+    c.AddPath(ep.outer, ClipperLib.PolyType.ptSubject, true);
+    for (const h of ep.holes) {
+      c.AddPath(h, ClipperLib.PolyType.ptSubject, true);
+    }
+  }
+
+  const tabPath = tabPoly.map(p => ({
     X: Math.round(p.x * CLIPPER_SCALE),
     Y: Math.round(p.y * CLIPPER_SCALE),
   }));
+  c.AddPath(tabPath, ClipperLib.PolyType.ptClip, true);
 
-  const paths = [path];
-  ClipperLib.Clipper.SimplifyPolygons(paths, ClipperLib.PolyFillType.pftNonZero);
-
-  const co = new ClipperLib.ClipperOffset();
-  co.ArcTolerance = 0.4 * CLIPPER_SCALE; // 円弧のきめ細かさ
-  co.AddPaths(paths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
-
-  const offsetPaths: Array<Array<{ X: number; Y: number }>> = [];
-  co.Execute(offsetPaths, margin * CLIPPER_SCALE);
-
-  return offsetPaths.map(poly =>
-    poly.map(pt => ({
-      x: pt.X / CLIPPER_SCALE,
-      y: pt.Y / CLIPPER_SCALE,
-    }))
-  );
-}
-
-/**
- * 2つのポリゴンのブーリアン結合（Union）
- */
-function unionPolygons(polyA: Point2D[], polyB: Point2D[]): Point2D[][] {
-  const pathA = polyA.map(p => ({ X: Math.round(p.x * CLIPPER_SCALE), Y: Math.round(p.y * CLIPPER_SCALE) }));
-  const pathB = polyB.map(p => ({ X: Math.round(p.x * CLIPPER_SCALE), Y: Math.round(p.y * CLIPPER_SCALE) }));
-
-  const c = new ClipperLib.Clipper();
-  c.AddPath(pathA, ClipperLib.PolyType.ptSubject, true);
-  c.AddPath(pathB, ClipperLib.PolyType.ptClip, true);
-
-  const solution: Array<Array<{ X: number; Y: number }>> = [];
+  const unionTree = new ClipperLib.PolyTree();
   c.Execute(
     ClipperLib.ClipType.ctUnion,
-    solution,
+    unionTree,
     ClipperLib.PolyFillType.pftNonZero,
     ClipperLib.PolyFillType.pftNonZero
   );
 
-  return solution.map(poly =>
-    poly.map(pt => ({
-      x: pt.X / CLIPPER_SCALE,
-      y: pt.Y / CLIPPER_SCALE,
-    }))
-  );
+  const result = ClipperLib.JS.PolyTreeToExPolygons(unionTree);
+  return result.length > 0 ? result : exPolys;
 }
 
 /**
@@ -557,6 +813,16 @@ function reverseBezierSegments(
     });
   }
   return reversed;
+}
+
+/**
+ * 閉曲線（ポリゴン）に対する Douglas-Peucker 単純化
+ */
+function simplifyClosedPolygonDP(points: Point2D[], epsilon: number): Point2D[] {
+  if (points.length <= 3) return points;
+  const closed = [...points, points[0]];
+  const simplified = simplifyPolygonDP(closed, epsilon);
+  return simplified.slice(0, simplified.length - 1);
 }
 
 /**

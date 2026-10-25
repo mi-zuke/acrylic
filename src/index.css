@@ -2,36 +2,196 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --accent: #2E5275;         /* 主アクセント（青灰：主ボタン・見出し左バー・フォーカス枠） */
+  --accent-hover: #23405C;   /* ホバー時 */
+  --accent-border: #1B3248;  /* 濃い枠線 */
+  --accent-bright: #6096C8;  /* ダークヘッダー（#333333）上で映える明度高めスレートブルー */
+  --accent-soft: #EBF1F6;    /* プレビュー図形内のごく薄い補助面 */
+
+  /* カテゴリ識別用の6px角形ドット色 */
+  --dot-3d: #2E5275;
+  --dot-image: #9E5A24;
+  --dot-ui: #346352;
+  --dot-status: #2E7D5B;
+}
+
 @layer base {
   *, ::before, ::after {
-    font-family: sans-serif;
+    font-family: Arial, "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-radius: 0px;
+  }
+  *::-webkit-scrollbar {
+    display: none;
   }
   body {
     @apply antialiased;
-    font-family: sans-serif;
+    font-family: Arial, "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #1f2937;
+    background-color: #FFFFFF;
   }
   button, input, select, textarea {
     font-family: inherit;
+    font-size: 13px;
   }
 }
 
-/* カスタムスクロールバー */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* =========================================================================
+   ボタン定義（.btn-primary / .btn-std / .btn-file / .btn-surface）
+   ========================================================================= */
+.btn-primary {
+  background-color: var(--accent);
+  border: 1px solid var(--accent-border);
+  color: #FFFFFF;
+  border-radius: 0px;
+  padding: 7px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+  cursor: pointer;
 }
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-border);
 }
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 3px;
+.btn-primary:active {
+  filter: brightness(0.92);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-/* カスタムスライダー */
+.btn-std {
+  background-color: #EFEFEF;
+  border: 1px solid #A3A3A3;
+  color: #1f2937;
+  border-radius: 0px;
+  padding: 7px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  cursor: pointer;
+}
+.btn-std:hover {
+  background-color: #E4E4E4;
+  border-color: #8C8C8C;
+}
+.btn-std:active {
+  background-color: #D8D8D8;
+}
+.btn-std:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ファイル選択専用（縦余白狭め） */
+.btn-file {
+  background-color: #EFEFEF;
+  border: 1px solid #A3A3A3;
+  color: #1f2937;
+  border-radius: 0px;
+  padding: 3px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+  cursor: pointer;
+}
+.btn-file:hover {
+  background-color: #E4E4E4;
+  border-color: #8C8C8C;
+}
+.btn-file:active {
+  background-color: #D8D8D8;
+}
+
+/* 白背景ボタン（グレービューポート上のフローティング用） */
+.btn-surface {
+  background-color: #FFFFFF;
+  border: 1px solid #A3A3A3;
+  color: #1f2937;
+  border-radius: 0px;
+  padding: 7px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+  cursor: pointer;
+}
+.btn-surface:hover {
+  background-color: #F5F5F5;
+  border-color: var(--accent);
+}
+.btn-surface:active {
+  background-color: #EAEAEA;
+}
+
+/* =========================================================================
+   入力欄・サイドバー折りたたみ・角形ドット・アクセント補助クラス
+   ========================================================================= */
+.input-std {
+  background-color: #FFFFFF;
+  border: 1px solid #A3A3A3;
+  color: #1f2937;
+  border-radius: 0px;
+  outline: none;
+  font-size: 13px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.input-std:focus {
+  border-color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* ツールサイドバー用アコーディオン見出し（14px・細字400） */
+.section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+  padding: 14px 16px 14px 20px;
+  color: #111827;
+  font-weight: 400;
+  font-size: 14px;
+  transition: background-color 0.12s ease;
+}
+@media (min-width: 1024px) {
+  .section-toggle {
+    padding: 16px 24px 16px 32px;
+  }
+}
+.section-toggle:hover {
+  background-color: #F8F8F8;
+}
+
+.sq-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background-color: var(--accent);
+}
+
+.accent-text {
+  color: var(--accent);
+}
+.accent-border-top {
+  border-top: 3px solid var(--accent);
+}
+
+/* =========================================================================
+   カスタムスライダー（つまみのみ丸型例外、枠線・有効バーに青灰を適用）
+   ========================================================================= */
 input[type="range"].custom-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -49,7 +209,7 @@ input[type="range"].custom-slider::-webkit-slider-thumb {
   height: 16px;
   border-radius: 50%;
   background-color: #ffffff;
-  border: 2px solid #8c8c8c; /* 白よりのグレー枠、内側白色 */
+  border: 2px solid var(--accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   transition: transform 0.1s ease, border-color 0.1s ease;
@@ -57,7 +217,7 @@ input[type="range"].custom-slider::-webkit-slider-thumb {
 
 input[type="range"].custom-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
-  border-color: #666666;
+  border-color: var(--accent-hover);
 }
 
 input[type="range"].custom-slider::-moz-range-thumb {
@@ -65,7 +225,7 @@ input[type="range"].custom-slider::-moz-range-thumb {
   height: 16px;
   border-radius: 50%;
   background-color: #ffffff;
-  border: 2px solid #8c8c8c;
+  border: 2px solid var(--accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   cursor: pointer;
 }
