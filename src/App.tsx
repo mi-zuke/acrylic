@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronUp, ChevronDown, Info, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, Info, X, Sun, Moon } from 'lucide-react';
 import { KeychainViewer, ViewerHandle } from './components/KeychainViewer';
 import { ControlPanel } from './components/ControlPanel';
 import {
@@ -11,8 +11,167 @@ import { SAMPLE_IMAGES } from './utils/sampleImages';
 import { EnvironmentPreset } from './utils/environmentGenerator';
 import { LightingDebugParams, DEFAULT_LIGHTING_PARAMS } from './types/lighting';
 
+type ThemeMode = 'light' | 'dark';
+
+const THEME_STORAGE_KEY = 'theme';
+
+const HELP_ITEMS = [
+  {
+    index: '01',
+    title: '画像の読み込み',
+    description:
+      '透過PNGを読み込むと、イラストの輪郭に合わせてアクリルが作成されます。',
+  },
+  {
+    index: '02',
+    title: 'キーホルダーの回転',
+    description:
+      '画面中央付近（円の内側）をドラッグすると、キーホルダー本体が左右に自転します。',
+  },
+  {
+    index: '03',
+    title: '背景・視点の回転',
+    description:
+      '画面の外側（円の外）をドラッグすると、周囲の背景や上下の視点角度が回転します。',
+  },
+  {
+    index: '04',
+    title: '拡大・縮小（ズーム）',
+    description:
+      'マウスホイール（PC）または2本指ピンチ操作（スマホ）でズームイン・ズームアウトができます。',
+  },
+  {
+    index: '05',
+    title: '画像の保存',
+    description:
+      '設定パネルの「画像を保存」から、現在の表示を画像として保存できます。',
+  },
+] as const;
+
+function getSystemTheme(): ThemeMode {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function getStoredTheme(): ThemeMode | null {
+  try {
+    const value = localStorage.getItem(THEME_STORAGE_KEY);
+    return value === 'dark' || value === 'light' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function applyThemeToDocument(override: ThemeMode | null): void {
+  const root = document.documentElement;
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
+  if (override) {
+    root.dataset.theme = override;
+    if (meta) meta.content = override;
+  } else {
+    delete root.dataset.theme;
+    if (meta) meta.content = 'light dark';
+  }
+}
+
 export const App: React.FC = () => {
   const viewerRef = useRef<ViewerHandle>(null);
+  const helpDialogRef = useRef<HTMLDialogElement>(null);
+
+  // テーマ状態（ライト既定＋OS追従＋手動切替）
+  const [resolvedTheme, setResolvedTheme] = useState<ThemeMode>(
+    () => getStoredTheme() ?? getSystemTheme()
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const handleSystemChange = () => {
+      if (!getStoredTheme()) {
+        setResolvedTheme(mediaQuery.matches ? 'dark' : 'light');
+      }
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key !== THEME_STORAGE_KEY) return;
+      const stored = getStoredTheme();
+      applyThemeToDocument(stored);
+      setResolvedTheme(stored ?? getSystemTheme());
+    };
+
+    mediaQuery.addEventListener('change', handleSystemChange);
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const handleToggleTheme = () => {
+    const target: ThemeMode = resolvedTheme === 'dark' ? 'light' : 'dark';
+    const system = getSystemTheme();
+
+    if (target === system) {
+      try {
+        localStorage.removeItem(THEME_STORAGE_KEY);
+      } catch {
+        // Storage unavailable; apply in-memory only
+      }
+      applyThemeToDocument(null);
+    } else {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, target);
+      } catch {
+        // Storage unavailable; apply in-memory only
+      }
+      applyThemeToDocument(target);
+    }
+    setResolvedTheme(target);
+  };
+
+  // ネイティブ <dialog> の light-dismiss (closedby="any") および Safari フォールバック
+  useEffect(() => {
+    const dialog = helpDialogRef.current;
+    if (!dialog) return;
+
+    dialog.setAttribute('closedby', 'any');
+
+    if ('closedBy' in HTMLDialogElement.prototype) return;
+
+    const isOutside = (e: PointerEvent) => {
+      const rect = dialog.getBoundingClientRect();
+      return (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      );
+    };
+
+    let pressedOutside = false;
+    const handlePointerDown = (e: PointerEvent) => {
+      pressedOutside = isOutside(e);
+    };
+    const handlePointerUp = (e: PointerEvent) => {
+      if (pressedOutside && isOutside(e)) {
+        dialog.close();
+      }
+    };
+
+    dialog.addEventListener('pointerdown', handlePointerDown);
+    dialog.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      dialog.removeEventListener('pointerdown', handlePointerDown);
+      dialog.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, []);
+
+  const handleOpenHelp = () => {
+    const dialog = helpDialogRef.current;
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
+  };
 
   // 画像ソース（Data URL）
   const [imageSrc, setImageSrc] = useState<string>('');
@@ -26,7 +185,7 @@ export const App: React.FC = () => {
     holeOffsetX: 0,
     holeDiameter: 3.2,
     tabHeight: 36, // ストラップ穴アクリル太さ強化
-    tabWidth: 44,  // ストラップ穴アクリル太さ強化
+    tabWidth: 44, // ストラップ穴アクリル太さ強化
   });
 
   // 計算されたカットパス情報
@@ -49,7 +208,6 @@ export const App: React.FC = () => {
   const [illustrationEnvInfluence, setIllustrationEnvInfluence] = useState<number>(30); // イラストへの環境光の影響度(%)
   const [lightingParams, setLightingParams] = useState<LightingDebugParams>(DEFAULT_LIGHTING_PARAMS);
   const [showControlPoints, setShowControlPoints] = useState<boolean>(false); // デバッグ用：アクリル外枠の制御点表示
-  const [showHelpModal, setShowHelpModal] = useState<boolean>(false); // 使い方モーダルの表示フラグ
 
   // モバイル時の操作パネル開閉フラグ (初期値: true = 下部半分開いている状態)
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState<boolean>(true);
@@ -58,7 +216,7 @@ export const App: React.FC = () => {
     setIsMobilePanelOpen((prev) => !prev);
     setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
-    }, 320);
+    }, 170);
   };
 
   // ライティング初期化ハンドラ
@@ -135,22 +293,40 @@ export const App: React.FC = () => {
     viewerRef.current?.resetCamera();
   };
 
+  const themeToggleLabel =
+    resolvedTheme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え';
+
   return (
-    <div className="relative flex flex-col lg:flex-row w-screen h-screen overflow-hidden bg-white text-gray-800 select-none">
+    <div className="relative flex flex-col lg:flex-row w-screen h-screen overflow-hidden bg-canvas text-fg select-none">
       {/* メイン3Dプレビュー領域（モバイル時は全画面、PC時は右側フレックス領域） */}
-      <main className="w-full h-full lg:flex-1 relative overflow-hidden bg-[#CCCCCC]">
-        {/* 背景左上の使い方ボタン */}
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 flex items-center gap-2">
+      <main className="w-full h-full lg:flex-1 relative overflow-hidden bg-surface">
+        {/* ビューポート上部のフローティングユーティリティ */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
           <button
             type="button"
-            onClick={() => setShowHelpModal(true)}
-            className="btn-surface flex items-center gap-1.5 text-[13px]"
-            style={{ padding: '4px 10px' }}
-            title="使い方"
-            aria-label="使い方を表示"
+            onClick={handleOpenHelp}
+            className="btn-surface pointer-events-auto"
+            aria-label="操作方法・使い方を表示"
           >
-            <Info className="w-3.5 h-3.5 accent-text" />
+            <Info className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
             <span>使い方</span>
+          </button>
+
+          {/* モバイル専用テーマ切替 */}
+          <button
+            type="button"
+            onClick={handleToggleTheme}
+            className="btn-surface lg:hidden pointer-events-auto"
+            aria-label={themeToggleLabel}
+          >
+            {resolvedTheme === 'dark' ? (
+              <Moon className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <Sun className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
+            )}
+            <span className="font-mono text-xs tracking-[0.08em] uppercase">
+              {resolvedTheme === 'dark' ? 'DARK' : 'LIGHT'}
+            </span>
           </button>
         </div>
 
@@ -176,51 +352,69 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* 操作パネル（PC: 左側410px固定サイドバー / スマホ: 画面下部半分固定・開閉ボトムシート） */}
+      {/* 操作パネル（PC: 左側400px固定サイドバー / スマホ: 画面下部開閉シート） */}
       <aside
+        aria-label="キーホルダー設定"
         className={`
-          bg-white shadow-xl lg:shadow-none border-gray-300 z-30 flex flex-col
-          transition-all duration-300 ease-in-out
-          lg:order-first lg:relative lg:w-[410px] lg:h-full lg:border-r lg:border-t-0
-          fixed bottom-0 left-0 right-0 border-t shrink-0 overflow-hidden
-          ${isMobilePanelOpen ? 'h-[50vh]' : 'h-11'}
+          bg-canvas z-30 flex flex-col shrink-0 overflow-hidden
+          transition-[height] duration-base ease-crisp
+          lg:order-first lg:relative lg:w-[400px] lg:h-full lg:border-r lg:border-t-0 lg:border-line-subtle
+          fixed bottom-0 left-0 right-0 border-t border-line-strong
+          ${isMobilePanelOpen ? 'h-[50vh]' : 'h-12'}
         `}
       >
+        {/* PC専用トップバー（64px・ブランドワードマーク＋テーマ切替） */}
+        <header className="hidden lg:flex items-center justify-between h-16 px-8 shrink-0 border-b border-line-subtle bg-canvas">
+          <div className="flex items-baseline gap-3">
+            <span className="font-mono text-sm font-medium tracking-[0.08em] uppercase text-fg">
+              ACRYLIC
+            </span>
+            <span className="mono-label text-fg-muted">3D SIMULATOR</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleToggleTheme}
+            className="btn-ghost border border-line-subtle px-2.5"
+            aria-label={themeToggleLabel}
+          >
+            {resolvedTheme === 'dark' ? (
+              <Moon className="w-3.5 h-3.5" strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <Sun className="w-3.5 h-3.5" strokeWidth={1.5} aria-hidden="true" />
+            )}
+            <span className="font-mono text-[11px] font-medium tracking-[0.08em] uppercase">
+              {resolvedTheme === 'dark' ? 'DARK' : 'LIGHT'}
+            </span>
+          </button>
+        </header>
+
         {/* モバイル専用：開閉バー ＋ クイック保存ボタン */}
-        <div className="lg:hidden flex items-center justify-between pl-4 pr-2.5 h-11 shrink-0 bg-[#e8e8e8] border-b border-gray-300 select-none">
+        <div className="lg:hidden flex items-center justify-between pl-5 pr-3 h-12 shrink-0 bg-surface border-b border-line-subtle select-none">
           <button
             type="button"
             onClick={toggleMobilePanel}
-            className="flex items-center gap-2 h-full flex-1 text-left text-gray-800 text-[13px] cursor-pointer"
+            aria-expanded={isMobilePanelOpen}
+            className="flex items-center gap-2.5 h-full flex-1 text-left text-fg cursor-pointer"
           >
-            <span className="w-5 h-1 bg-gray-500" />
-            <span className="font-bold">設定</span>
-            <span className="text-[13px] text-gray-500 ml-1">
-              {isMobilePanelOpen ? '（タップで閉じる）' : '（タップで開く）'}
+            {isMobilePanelOpen ? (
+              <ChevronDown className="w-4 h-4 text-fg-secondary shrink-0" strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <ChevronUp className="w-4 h-4 text-fg-secondary shrink-0" strokeWidth={1.5} aria-hidden="true" />
+            )}
+            <span className="text-sm font-medium text-fg">設定</span>
+            <span className="mono-label text-fg-muted">
+              {isMobilePanelOpen ? 'HIDE' : 'OPEN'}
             </span>
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCaptureScreenshot}
-              className="btn-primary text-[13px]"
-              style={{ padding: '3px 10px' }}
-            >
-              画像を保存
-            </button>
-            <button
-              type="button"
-              onClick={toggleMobilePanel}
-              className="p-1.5 text-gray-700 cursor-pointer"
-              aria-label={isMobilePanelOpen ? '設定パネルを閉じる' : '設定パネルを開く'}
-            >
-              {isMobilePanelOpen ? (
-                <ChevronDown className="w-4 h-4 text-gray-700" />
-              ) : (
-                <ChevronUp className="w-4 h-4 text-gray-700" />
-              )}
-            </button>
-          </div>
+
+          <button
+            type="button"
+            onClick={handleCaptureScreenshot}
+            className="btn-primary min-h-[36px] px-3 text-xs"
+          >
+            画像を保存
+          </button>
         </div>
 
         {/* コントロールパネル本体 */}
@@ -255,98 +449,59 @@ export const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* 使い方モーダル */}
-      {showHelpModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] p-4"
-          onClick={() => setShowHelpModal(false)}
-        >
-          <div
-            className="bg-white border border-[#A3A3A3] accent-border-top shadow-xl max-w-sm w-full p-5 rounded-none text-gray-800"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* ヘッダー */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
-              <div className="flex items-center gap-2 font-normal text-gray-900 text-[14px]">
-                <Info className="w-4 h-4 accent-text" />
-                <span>操作方法・使い方</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowHelpModal(false)}
-                className="text-gray-500 hover:text-gray-800 p-1 cursor-pointer"
-                aria-label="閉じる"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* ガイド一覧 */}
-            <div className="space-y-3.5 text-[13px] leading-relaxed text-gray-600 select-text">
-              <div>
-                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
-                  <span className="sq-dot" />
-                  画像の読み込み
-                </p>
-                <p className="pl-3.5">
-                  透過PNGを読み込むと、イラストの輪郭に合わせてアクリルが作成されます。
-                </p>
-              </div>
-
-              <div>
-                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
-                  <span className="sq-dot" />
-                  キーホルダーの回転
-                </p>
-                <p className="pl-3.5">
-                  画面中央付近（円の内側）をドラッグすると、キーホルダー本体が左右に自転します。
-                </p>
-              </div>
-
-              <div>
-                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
-                  <span className="sq-dot" />
-                  背景・視点の回転
-                </p>
-                <p className="pl-3.5">
-                  画面の外側（円の外）をドラッグすると、周囲の背景や上下の視点角度が回転します。
-                </p>
-              </div>
-
-              <div>
-                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
-                  <span className="sq-dot" />
-                  拡大・縮小（ズーム）
-                </p>
-                <p className="pl-3.5">
-                  マウスホイール（PC）または2本指ピンチ操作（スマホ）でズームイン・ズームアウトができます。
-                </p>
-              </div>
-
-              <div>
-                <p className="font-bold text-gray-900 mb-0.5 flex items-center gap-2">
-                  <span className="sq-dot" />
-                  画像の保存
-                </p>
-                <p className="pl-3.5">
-                  設定パネルの「画像を保存」から、現在の表示を画像として保存できます。
-                </p>
-              </div>
-            </div>
-
-            {/* フッター閉じるボタン */}
-            <div className="mt-5 pt-3 border-t border-gray-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowHelpModal(false)}
-                className="btn-std"
-              >
-                閉じる
-              </button>
-            </div>
+      {/* ネイティブモーダル <dialog>（使い方ガイド） */}
+      <dialog
+        ref={helpDialogRef}
+        aria-labelledby="help-dialog-title"
+        className="swiss-dialog"
+      >
+        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-line-subtle">
+          <div>
+            <span className="mono-label block mb-1">GUIDE / 01–05</span>
+            <h1 id="help-dialog-title" className="text-lg font-medium text-fg leading-snug">
+              操作方法・使い方
+            </h1>
           </div>
+          <form method="dialog">
+            <button
+              type="submit"
+              className="btn-ghost px-2 min-w-[36px]"
+              aria-label="閉じる"
+            >
+              <X className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          </form>
         </div>
-      )}
+
+        <div className="px-6 py-6 overflow-y-auto select-text">
+          <ol className="border-t border-line-strong">
+            {HELP_ITEMS.map((item) => (
+              <li
+                key={item.index}
+                className="grid grid-cols-[2rem_1fr] gap-x-4 py-4 border-b border-line-subtle"
+              >
+                <span className="font-mono text-xs text-fg-muted tabular-nums pt-0.5">
+                  {item.index}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-fg mb-1">{item.title}</p>
+                  <p className="text-sm text-fg-secondary leading-[1.7] tracking-[0.02em]">
+                    {item.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="px-6 py-4 border-t border-line-subtle flex justify-end">
+          <form method="dialog">
+            <button type="submit" autoFocus className="btn-primary">
+              閉じる
+            </button>
+          </form>
+        </div>
+      </dialog>
     </div>
   );
 };

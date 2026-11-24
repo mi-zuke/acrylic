@@ -1125,8 +1125,8 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
 
   return (
     <div
-      className="relative w-full h-full select-none overflow-hidden transition-colors duration-300 touch-none"
-      style={{ backgroundColor: showSkyboxBg ? '#0f172a' : backgroundColor }}
+      className="relative w-full h-full select-none overflow-hidden transition-colors duration-base ease-crisp touch-none"
+      style={{ backgroundColor: showSkyboxBg ? 'var(--bg-canvas)' : backgroundColor }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -1134,19 +1134,19 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
       onPointerLeave={handlePointerLeave}
       onWheel={handleWheel}
     >
-      {/* 重心ホバー円オーバーレイ（アクキー操作エリア：半透明グレー/半透明黒） */}
+      {/* 重心ホバー円オーバーレイ（アクキー操作エリア：シャドウレス1pxレティクル） */}
       {circleInfo && (
         <div
-          className="absolute rounded-full pointer-events-none transition-opacity duration-200 ease-out"
+          aria-hidden="true"
+          className="absolute rounded-full pointer-events-none transition-opacity duration-base ease-crisp"
           style={{
             left: `${circleInfo.x}px`,
             top: `${circleInfo.y}px`,
             width: `${circleInfo.radius * 2}px`,
             height: `${circleInfo.radius * 2}px`,
             transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgba(0, 0, 0, 0.16)', // 半透明グレー/黒
-            border: '1.5px solid rgba(255, 255, 255, 0.28)', // 視認性の高い繊細な境界線
-            boxShadow: '0 0 25px rgba(0, 0, 0, 0.12)',
+            backgroundColor: 'rgba(17, 17, 17, 0.12)',
+            border: '1px solid rgba(255, 255, 255, 0.5)',
             opacity: (circleInfo.isDragging ? circleInfo.dragMode === 'keychain' : circleInfo.isHovered) ? 1 : 0,
           }}
         />
@@ -1164,12 +1164,22 @@ export const KeychainViewer = forwardRef<ViewerHandle, ViewerProps>(({
         }`}
       />
 
-      {/* ローディング表示 */}
+      {/* ローディング表示（0px シャープ枠・モノクロ・ブラー/シャドウなし） */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center gap-3 bg-white/95 p-5 rounded-2xl border border-gray-200 shadow-2xl">
-            <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm font-medium text-gray-700">アクキー生成中...</p>
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute inset-0 flex items-center justify-center bg-scrim pointer-events-none"
+        >
+          <div className="flex items-center gap-4 bg-canvas px-6 py-5 border border-line-strong">
+            <span
+              aria-hidden="true"
+              className="w-3 h-3 bg-inverted swiss-pulse shrink-0"
+            />
+            <div className="flex flex-col gap-0.5">
+              <span className="mono-label">GENERATING</span>
+              <p className="text-sm font-medium text-fg">アクキー生成中...</p>
+            </div>
           </div>
         </div>
       )}
